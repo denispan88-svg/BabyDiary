@@ -35,10 +35,22 @@ jobs:
           cp icon-192.png www/ 2>/dev/null || true
           cp icon-512.png www/ 2>/dev/null || true
 
+      - name: Read version from index.html
+        id: ver
+        run: |
+          V=$(grep -oP "APP_VERSION\s*=\s*'\K[^']+" index.html | head -1)
+          echo "version=$V" >> $GITHUB_OUTPUT
+
+      - name: Inject Build Tag
+        run: |
+          TAG="v${{ steps.ver.outputs.version }}-${{ github.run_number }}"
+          sed -i "s/const BUILD_TAG = '.*';/const BUILD_TAG = '$TAG';/" www/index.html
+          echo "Внедрен тег сборки: $TAG"
+
       - name: Install dependencies
         run: |
           npm init -y
-          npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/preferences @capacitor/app
+          npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/preferences @capacitor/app @capacitor/filesystem
 
       - name: Init Capacitor
         run: npx cap init "Дневник развития" "com.babydiary.app" --web-dir=www
@@ -90,12 +102,6 @@ jobs:
         with:
           name: babydiary-apk
           path: release/BabyDiary.apk
-
-      - name: Read version from index.html
-        id: ver
-        run: |
-          V=$(grep -oP "APP_VERSION\s*=\s*'\K[^']+" index.html | head -1)
-          echo "version=$V" >> $GITHUB_OUTPUT
 
       - name: Create Release
         uses: softprops/action-gh-release@v2

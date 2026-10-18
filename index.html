@@ -53,7 +53,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
   padding:18px 20px;margin-bottom:14px;position:relative;overflow:hidden;box-shadow:var(--shadow)}
 .focus-card::before{content:'';position:absolute;top:-50px;right:-50px;width:150px;height:150px;
   background:radial-gradient(circle,rgba(255,255,255,.75),transparent 70%);border-radius:50%}
-.fw{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:#b07c9c;margin-bottom:4px}
+.fw{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:#b07c9c;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center}
 .ft{font-size:21px;font-weight:700;display:flex;align-items:center;gap:8px;margin-bottom:4px;position:relative}
 .fd{font-size:13px;color:#8a6e85;position:relative}
 button{font-family:inherit}
@@ -115,7 +115,7 @@ textarea{resize:vertical;min-height:60px}
 .del{background:none;border:none;color:#c9a8b5;font-size:16px;cursor:pointer;padding:0 4px}
 .photo-up{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 .photo-prev{position:relative}
-.photo-prev img{width:70px;height:70px;object-fit:cover;border-radius:10px}
+.photo-prev img, .photo-prev video{width:70px;height:70px;object-fit:cover;border-radius:10px}
 .photo-prev button{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;
   background:#e88a8a;color:#fff;border:none;font-size:12px;cursor:pointer;line-height:1}
 .up-label{display:inline-flex;align-items:center;gap:6px;background:var(--pink-soft);color:#a5668e;
@@ -125,7 +125,8 @@ textarea{resize:vertical;min-height:60px}
   margin-bottom:12px;box-shadow:var(--shadow)}
 .ach-title{font-size:16px;font-weight:700;margin-bottom:4px;display:flex;gap:8px;align-items:center}
 .ach-date{font-size:12px;color:var(--text-light)}
-.ach img{width:100%;max-height:260px;object-fit:cover;border-radius:12px;margin-top:10px;cursor:pointer}
+.ach-desc{font-size:13px;margin-top:8px;color:var(--text);white-space:pre-wrap;}
+.ach img, .ach video{width:100%;max-height:300px;object-fit:cover;border-radius:12px;margin-top:10px;}
 .ritual{background:#fff;border-radius:16px;padding:14px 16px;margin-bottom:12px;box-shadow:var(--shadow)}
 .ritual-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
 .ritual-name{font-size:16px;font-weight:700;display:flex;gap:8px;align-items:center}
@@ -234,6 +235,22 @@ code{background:#f5eefa;color:#7a6ba8;padding:2px 6px;border-radius:5px;font-siz
   </div>
 </div>
 
+<!-- модалка: обновление -->
+<div class="modal" id="updateModal">
+  <div class="modal-inner">
+    <h3>🚀 Доступно обновление!</h3>
+    <p style="font-size:13px;color:#8d8091;margin-bottom:10px">
+      Текущая версия: <b id="currentTag"></b><br>
+      Новая версия: <b id="newTag" style="color:var(--ok)"></b>
+    </p>
+    <div id="updateNotes" style="background:#faf7fc;padding:10px;border-radius:10px;font-size:13px;margin-bottom:15px;max-height:150px;overflow-y:auto;white-space:pre-wrap;line-height:1.4;color:#6d5c74"></div>
+    <div class="row" style="justify-content:space-between;margin-top:16px">
+      <button class="btn btn-mini btn-ghost" onclick="document.getElementById('updateModal').classList.remove('show')">Позже</button>
+      <a id="updateLink" href="#" target="_blank" class="btn btn-primary" style="text-decoration:none;text-align:center;display:inline-block">Скачать APK</a>
+    </div>
+  </div>
+</div>
+
 <!-- модалка: импорт -->
 <div class="modal" id="importModal">
   <div class="modal-inner">
@@ -249,7 +266,6 @@ code{background:#f5eefa;color:#7a6ba8;padding:2px 6px;border-radius:5px;font-siz
     <textarea id="importText" rows="8" placeholder="Фокус: Развитие слуха и гуления
 12.05.2024: Выкладывание на живот (5 мин)
 12.05.2024: Массаж всего тела (10 мин)
-13.05.2024: Погремушка справа/слева (10 повторений)
 
 Фокус: Развитие зрения
 19.05.2024: Слежение за игрушкой (10 раз)" oninput="App.previewImport()"></textarea>
@@ -272,8 +288,12 @@ code{background:#f5eefa;color:#7a6ba8;padding:2px 6px;border-radius:5px;font-siz
 <div class="toast" id="toast"></div>
 
 <script>
+/* ============ НАСТРОЙКИ ОБНОВЛЕНИЙ ============ */
+const APP_VERSION = '1.0.2';
+const BUILD_TAG = 'local';
+const GITHUB_REPO = 'denispan88-svg/BabyDiary';
+
 /* ============ УТИЛИТЫ ============ */
-const APP_VERSION = '1.0.1';
 const $  = (s,r=document)=>r.querySelector(s);
 const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
 const uid = ()=>Math.random().toString(36).slice(2,9);
@@ -284,6 +304,16 @@ const fmtDMY = (s)=>{const [y,m,d]=s.split('-');return d+'.'+m+'.'+y};
 const esc = (s)=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200)}
 function openImg(src){$('#lbImg').src=src;$('#lightbox').classList.add('show')}
+
+/* ============ РАБОТА С ФАЙЛАМИ (NATIVE & WEB) ============ */
+function getSrc(uri) {
+  if (!uri) return '';
+  if (uri.startsWith('data:')) return uri;
+  if (window.Capacitor && Capacitor.convertFileSrc) {
+    return Capacitor.convertFileSrc(uri);
+  }
+  return uri;
+}
 
 function compressImage(file,max=900){return new Promise(res=>{
   const fr=new FileReader();
@@ -296,68 +326,79 @@ function compressImage(file,max=900){return new Promise(res=>{
   fr.readAsDataURL(file);
 })}
 
-/* ============ ФОКУСЫ ПО УМОЛЧАНИЮ ============ */
-const WEEK_FOCUS={
-1:{t:'Контакт и адаптация',e:'🤱',d:'Кожа к коже, спокойное бодрствование',tasks:[
-  {n:'Контакт кожа-к-коже',g:'30 мин',ty:'time'},
-  {n:'Зрительный контакт',g:'5 мин',ty:'time'},
-  {n:'Спокойное бодрствование рядом',g:'10 мин',ty:'time'}]},
-2:{t:'Слух',e:'👂',d:'Реакция на звуки, поворот головы',tasks:[
-  {n:'Погремушка справа / слева',g:'10 повторений',ty:'count'},
-  {n:'Тихая спокойная музыка',g:'15 мин',ty:'time'},
-  {n:'Ласковый разговор',g:'20 мин',ty:'time'},
-  {n:'Пение колыбельной',g:'2 раза',ty:'count'}]},
-3:{t:'Зрение',e:'👀',d:'Фокусировка, слежение',tasks:[
-  {n:'Контрастные картинки',g:'5 мин',ty:'time'},
-  {n:'Слежение за игрушкой',g:'10 повторений',ty:'count'},
-  {n:'Мобиль / Подвесные игрушки',g:'10 мин',ty:'time'},
-  {n:'Слежение за лицом мамы',g:'5 мин',ty:'time'}]},
-4:{t:'Моторика и рефлексы',e:'✋',d:'Выкладывание на живот',tasks:[
-  {n:'Выкладывание на живот',g:'3×2 мин',ty:'count'},
-  {n:'Захват пальца взрослого',g:'10 повторений',ty:'count'},
-  {n:'Массаж ручек и ножек',g:'5 мин',ty:'time'},
-  {n:'Гимнастика',g:'5 мин',ty:'time'}]},
-5:{t:'Тактильные ощущения',e:'🖐️',d:'Разные текстуры',tasks:[
-  {n:'Поглаживание разными тканями',g:'5 мин',ty:'time'},
-  {n:'Массаж пальчиков',g:'5 мин',ty:'time'},
-  {n:'Воздушные ванны',g:'10 мин',ty:'time'},
-  {n:'Выкладывание на живот',g:'3×3 мин',ty:'count'}]},
-6:{t:'Речь и гуление',e:'🗣️',d:'Звуки, гуление',tasks:[
-  {n:'Разговор с паузами',g:'15 мин',ty:'time'},
-  {n:'Подражание гулению',g:'10 повторений',ty:'count'},
-  {n:'Пение песенок',g:'5 раз',ty:'count'},
-  {n:'Чтение стишков',g:'10 мин',ty:'time'}]},
-7:{t:'Социальное взаимодействие',e:'😊',d:'Улыбка, реакция на лицо',tasks:[
-  {n:'Игра «ку-ку»',g:'5 раз',ty:'count'},
-  {n:'Улыбка в ответ',g:'10 раз',ty:'count'},
-  {n:'Совместное рассматривание',g:'10 мин',ty:'time'},
-  {n:'Разговор лицом к лицу',g:'10 мин',ty:'time'}]},
-8:{t:'Хватание',e:'🤲',d:'Захват и удержание игрушек',tasks:[
-  {n:'Вложение игрушки в руку',g:'10 раз',ty:'count'},
-  {n:'Погремушки для захвата',g:'10 мин',ty:'time'},
-  {n:'Выкладывание на живот',g:'4×5 мин',ty:'count'},
-  {n:'Массаж ладошек',g:'5 мин',ty:'time'}]}
-};
-const DEFAULT_FOCUS={t:'Комплексное развитие',e:'🌟',d:'Гармоничное развитие каждый день',tasks:[
-  {n:'Выкладывание на живот',g:'5×5 мин',ty:'count'},
-  {n:'Массаж и гимнастика',g:'10 мин',ty:'time'},
-  {n:'Чтение книжек',g:'10 мин',ty:'time'},
-  {n:'Разговор и пение',g:'15 мин',ty:'time'}]};
+async function saveMediaFile(file, isVideo) {
+  if (window.Capacitor && Capacitor.Plugins.Filesystem) {
+    let base64Data = '';
+    if (isVideo) {
+      base64Data = await new Promise(res => {
+        const fr = new FileReader();
+        fr.onload = e => res(e.target.result);
+        fr.readAsDataURL(file);
+      });
+    } else {
+      base64Data = await compressImage(file);
+    }
+    
+    const ext = isVideo ? 'mp4' : 'jpg';
+    const fileName = 'media_' + Date.now() + '_' + Math.floor(Math.random()*1000) + '.' + ext;
+    
+    try {
+      const result = await Capacitor.Plugins.Filesystem.writeFile({
+        path: fileName,
+        data: base64Data.split(',')[1],
+        directory: 'DATA',
+        encoding: 'base64'
+      });
+      return result.uri;
+    } catch(e) {
+      alert('Ошибка сохранения файла: ' + e.message);
+      return null;
+    }
+  } else {
+    if (isVideo) {
+      return await new Promise(res => {
+        const fr = new FileReader();
+        fr.onload = e => res(e.target.result);
+        fr.readAsDataURL(file);
+      });
+    } else {
+      return await compressImage(file);
+    }
+  }
+}
 
-const POOL_TASKS=[
-  {n:'Выкладывание на живот',g:'5 мин',ty:'time'},
-  {n:'Массаж всего тела',g:'10 мин',ty:'time'},
-  {n:'Пальчиковая гимнастика',g:'5 мин',ty:'time'},
-  {n:'Погремушка справа/слева',g:'10 повторений',ty:'count'},
-  {n:'Воздушные ванны',g:'10 мин',ty:'time'},
-  {n:'Чтение книжки',g:'10 мин',ty:'time'},
-  {n:'Пение песенок',g:'5 раз',ty:'count'},
-  {n:'Игра «ку-ку»',g:'5 раз',ty:'count'},
-  {n:'Контрастные картинки',g:'5 мин',ty:'time'},
-  {n:'Гимнастика',g:'5 мин',ty:'time'},
-  {n:'Контакт кожа-к-коже',g:'20 мин',ty:'time'},
-  {n:'Прогулка на улице',g:'30 мин',ty:'time'}
-];
+/* ============ ПРОВЕРКА ОБНОВЛЕНИЙ ============ */
+async function checkForUpdates(force = false) {
+  if (BUILD_TAG === 'local') return;
+  const lastCheck = localStorage.getItem('ld_last_update_check');
+  const now = Date.now();
+  if (!force && lastCheck && (now - lastCheck < 12 * 60 * 60 * 1000)) return;
+  localStorage.setItem('ld_last_update_check', now);
+  
+  try {
+    const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest?t=${Date.now()}`, {
+      headers: { 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.tag_name !== BUILD_TAG) {
+      showUpdateModal(data.tag_name, data.body, data.assets);
+    }
+  } catch (e) { console.log('Update check failed:', e); }
+}
+
+function showUpdateModal(newTag, notes, assets) {
+  document.getElementById('currentTag').textContent = BUILD_TAG;
+  document.getElementById('newTag').textContent = newTag;
+  document.getElementById('updateNotes').textContent = notes || 'Нет описания изменений.';
+  let downloadUrl = `https://github.com/${GITHUB_REPO}/releases/latest`;
+  if (assets && assets.length > 0) {
+    const apkAsset = assets.find(a => a.name.endsWith('.apk'));
+    if (apkAsset) downloadUrl = apkAsset.browser_download_url;
+  }
+  document.getElementById('updateLink').href = downloadUrl;
+  document.getElementById('updateModal').classList.add('show');
+}
 
 /* ============ СОСТОЯНИЕ ============ */
 const LS={name:'ld_name',mother:'ld_mother',birth:'ld_birth',avatar:'ld_avatar',
@@ -388,6 +429,7 @@ const state={
   addTaskOpen: false,
   pendingPhotos: [],
   _achPhoto: '',
+  _achVideo: null,
   _newAvatar: undefined
 };
 
@@ -426,17 +468,14 @@ function getFocus(dateStr){
   if(imported && imported.trim()){
     return {week:wn, t:imported, e:'📥', d:'Фокус недели из импорта'};
   }
-  return Object.assign({week:wn}, WEEK_FOCUS[wn]||DEFAULT_FOCUS);
+  return {week:wn, t:'Не задан', e:'📅', d:'Нажмите ✏️ чтобы указать фокус'};
 }
 
 function ensureTasksFor(date){
-  if(state.tasks[date]) return;
-  const focus=getFocus(date);
-  state.tasks[date]=focus.tasks.map(t=>({
-    id:'t'+uid(), name:t.n, target:t.g, type:t.ty,
-    reps:'', time:'', note:'', status:null
-  }));
-  save('tasks');
+  if(!state.tasks[date]) {
+    state.tasks[date] = [];
+    save('tasks');
+  }
 }
 
 function finalizePastTasks(){
@@ -502,7 +541,7 @@ function renderHeader(){
 
   const img=$('#avatarImg'), emoji=$('#avatarEmoji');
   if(state.avatar){
-    if(img.getAttribute('src')!==state.avatar) img.src=state.avatar;
+    if(img.getAttribute('src')!==getSrc(state.avatar)) img.src=getSrc(state.avatar);
     img.style.display='block';
     emoji.style.display='none';
   } else {
@@ -520,42 +559,49 @@ function renderTasks(){
   const isPast=date<todayStr();
   const done=tasks.filter(t=>t.status==='done').length;
 
-  let html='';
-  html+='<div class="focus-card">'
-    +'<div class="fw">Фокус '+focus.week+'-й недели</div>'
-    +'<div class="ft">'+focus.e+' '+esc(focus.t)+'</div>'
-    +'<div class="fd">'+esc(focus.d)+'</div>'
-    +'</div>';
+  let html = `
+    <div class="focus-card">
+      <div class="fw">Фокус ${focus.week}-й недели <button class="btn btn-mini btn-ghost" style="padding:2px 8px;" onclick="App.editFocus()">✏️</button></div>
+      <div class="ft">${focus.e} ${esc(focus.t)}</div>
+      <div class="fd">${esc(focus.d)}</div>
+    </div>
 
-  html+='<div class="datebar">'
-    +'<input type="date" value="'+date+'" onchange="App.changeDate(this.value)">'
-    +'<button class="btn btn-mini btn-ghost" onclick="App.changeDate(\''+todayStr()+'\')">Сегодня</button>'
-    +'</div>';
+    <div class="datebar">
+      <input type="date" value="${date}" onchange="App.changeDate(this.value)">
+      <button class="btn btn-mini btn-ghost" onclick="App.changeDate('${todayStr()}')">Сегодня</button>
+    </div>
 
-  html+='<div class="card">';
-  html+='<div class="card-title"><span>Задачи дня · '+fmtDate(date)+'</span><span>'+done+'/'+tasks.length+'</span></div>';
+    <div class="card">
+      <div class="card-title"><span>Задачи дня · ${fmtDate(date)}</span><span>${done}/${tasks.length}</span></div>
+  `;
+
   if(!tasks.length){
-    html+='<div class="empty"><div class="e">🌸</div>Пока нет задач на этот день</div>';
+    html += `<div class="empty"><div class="e">🌸</div>Пока нет задач на этот день</div>`;
   }else{
-    tasks.forEach(t=>{ html+=renderTaskItem(t,isPast); });
+    tasks.forEach(t=>{ html += renderTaskItem(t,isPast); });
   }
-  html+='<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">'
-    +'<button class="btn btn-ghost" onclick="App.toggleAdd()">➕ Добавить задачу</button>'
-    +'<button class="btn btn-primary" onclick="App.openImport()">📥 Импорт плана</button>'
-    +'</div>';
-  if(state.addTaskOpen) html+=renderAddTaskForm();
-  html+='</div>';
+
+  html += `
+      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-ghost" onclick="App.toggleAdd()">➕ Добавить задачу</button>
+        <button class="btn btn-primary" onclick="App.openImport()">📥 Импорт плана</button>
+      </div>
+      ${state.addTaskOpen ? renderAddTaskForm() : ''}
+    </div>
+  `;
 
   const stats=getWeekStats(date);
-  html+='<div class="card">'
-    +'<div class="card-title">Статистика недели</div>'
-    +'<div class="stats">'
-    +'<div class="stat ok"><div class="n">'+stats.done+'</div><div class="l">выполнено</div></div>'
-    +'<div class="stat fail"><div class="n">'+stats.failed+'</div><div class="l">пропущено</div></div>'
-    +'<div class="stat"><div class="n">'+(stats.total?Math.round(stats.done/stats.total*100):0)+'%</div><div class="l">успех</div></div>'
-    +'</div>'
-    +'<p class="hint">Невыполненные задачи в конце дня автоматически получают минус.</p>'
-    +'</div>';
+  html += `
+    <div class="card">
+      <div class="card-title">Статистика недели</div>
+      <div class="stats">
+        <div class="stat ok"><div class="n">${stats.done}</div><div class="l">выполнено</div></div>
+        <div class="stat fail"><div class="n">${stats.failed}</div><div class="l">пропущено</div></div>
+        <div class="stat"><div class="n">${stats.total?Math.round(stats.done/stats.total*100):0}%</div><div class="l">успех</div></div>
+      </div>
+      <p class="hint">Невыполненные задачи в конце дня автоматически получают минус.</p>
+    </div>
+  `;
   return html;
 }
 
@@ -564,35 +610,39 @@ function renderTaskItem(t,isPast){
   const cls=status==='done'?'done':status==='failed'?'failed':'pending';
   const icon=status==='done'?'✓':status==='failed'?'✕':'';
   const dis=status==='failed'?'disabled':'';
-  return '<div class="task '+cls+'">'
-    +'<div class="t-head">'
-    +'<button class="t-check '+(status==='done'?'done':status==='failed'?'failed':'')+'" onclick="App.toggleDone(\''+t.id+'\')" '+(status==='failed'?'disabled':'')+'>'+icon+'</button>'
-    +'<div class="t-info">'
-    +'<div class="t-name">'+esc(t.name)+'</div>'
-    +'<div class="t-meta"><span class="t-badge '+(t.type==='time'?'time':'')+'">'+(t.type==='time'?'⏱':'🔁')+' '+esc(t.target)+'</span></div>'
-    +'</div></div>'
-    +'<div class="t-controls">'
-    +'<input type="number" min="0" placeholder="Повторений" value="'+esc(t.reps)+'" onchange="App.updTask(\''+t.id+'\',\'reps\',this.value)" '+dis+'>'
-    +'<input type="time" value="'+esc(t.time)+'" onchange="App.updTask(\''+t.id+'\',\'time\',this.value)" '+dis+'>'
-    +'<input class="full" type="text" placeholder="Замечание" value="'+esc(t.note)+'" onchange="App.updTask(\''+t.id+'\',\'note\',this.value)" '+dis+'>'
-    +'</div>'
-    +'<div class="t-actions">'
-    +'<button class="t-link" onclick="App.noteFromTask(\''+t.id+'\')">📝 Записать наблюдение</button>'
-    +'<button class="del" onclick="App.delTask(\''+t.id+'\')">✕</button>'
-    +'</div></div>';
+  return `
+    <div class="task ${cls}">
+      <div class="t-head">
+        <button class="t-check ${status==='done'?'done':status==='failed'?'failed':''}" onclick="App.toggleDone('${t.id}')" ${status==='failed'?'disabled':''}>${icon}</button>
+        <div class="t-info">
+          <div class="t-name">${esc(t.name)}</div>
+          <div class="t-meta"><span class="t-badge ${t.type==='time'?'time':''}">${t.type==='time'?'⏱':'🔁'} ${esc(t.target)}</span></div>
+        </div>
+      </div>
+      <div class="t-controls">
+        <input type="text" placeholder="Повторений" value="${esc(t.reps)}" onchange="App.updTask('${t.id}','reps',this.value)" ${dis}>
+        <input type="text" placeholder="Длительность (напр. 5 мин)" value="${esc(t.time)}" onchange="App.updTask('${t.id}','time',this.value)" ${dis}>
+        <input class="full" type="text" placeholder="Замечание" value="${esc(t.note)}" onchange="App.updTask('${t.id}','note',this.value)" ${dis}>
+      </div>
+      <div class="t-actions">
+        <button class="t-link" onclick="App.noteFromTask('${t.id}')">📝 Записать наблюдение</button>
+        <button class="del" onclick="App.delTask('${t.id}')">✕</button>
+      </div>
+    </div>
+  `;
 }
 
 function renderAddTaskForm(){
-  let opts='';
-  POOL_TASKS.forEach((p,i)=>{ opts+='<option value="'+i+'">'+esc(p.n)+' — '+esc(p.g)+'</option>'; });
-  return '<div class="add-form">'
-    +'<div class="row"><select id="poolSel" onchange="App.pickFromPool(this.value)"><option value="">— выбрать из списка —</option>'+opts+'</select></div>'
-    +'<div class="row"><input type="text" id="newTaskName" placeholder="Название задачи"></div>'
-    +'<div class="row"><input type="text" id="newTaskTarget" placeholder="Цель: 10 повторений / 5 мин"></div>'
-    +'<div class="row" style="justify-content:flex-end">'
-    +'<button class="btn btn-mini btn-ghost" onclick="App.toggleAdd()">Отмена</button>'
-    +'<button class="btn btn-mini btn-primary" onclick="App.addTask()">Добавить</button>'
-    +'</div></div>';
+  return `
+    <div class="add-form">
+      <div class="row"><input type="text" id="newTaskName" placeholder="Название задачи"></div>
+      <div class="row"><input type="text" id="newTaskTarget" placeholder="Цель (напр. 5 мин или 10 раз)"></div>
+      <div class="row" style="justify-content:flex-end">
+        <button class="btn btn-mini btn-ghost" onclick="App.toggleAdd()">Отмена</button>
+        <button class="btn btn-mini btn-primary" onclick="App.addTask()">Добавить</button>
+      </div>
+    </div>
+  `;
 }
 
 function getWeekStats(dateStr){
@@ -611,40 +661,46 @@ function getWeekStats(dateStr){
 
 /* ============ ЗАМЕТКИ ============ */
 function renderNotes(){
-  let html='<div class="card">'
-    +'<div class="card-title">Новая заметка / наблюдение</div>'
-    +'<textarea id="noteText" placeholder="Что заметили?"></textarea>'
-    +'<div class="row" style="margin-top:8px"><select id="noteLink"><option value="">— привязать к задаче (необязательно) —</option>'+linkOptions()+'</select></div>'
-    +'<div class="row" style="margin-top:8px;align-items:flex-start">'
-    +'<label class="up-label">📷 Фото<input type="file" accept="image/*" multiple onchange="App.addNotePhoto(this)"></label>'
-    +'<div class="photo-up" id="notePhotoPreview"></div>'
-    +'</div>'
-    +'<div class="row" style="justify-content:flex-end;margin-top:10px">'
-    +'<button class="btn btn-primary" onclick="App.saveNote()">Сохранить</button>'
-    +'</div></div>';
+  let html = `
+    <div class="card">
+      <div class="card-title">Новая заметка / наблюдение</div>
+      <textarea id="noteText" placeholder="Что заметили?"></textarea>
+      <div class="row" style="margin-top:8px"><select id="noteLink"><option value="">— привязать к задаче (необязательно) —</option>${linkOptions()}</select></div>
+      <div class="row" style="margin-top:8px;align-items:flex-start">
+        <label class="up-label">📷 Фото<input type="file" accept="image/*" multiple onchange="App.addNotePhoto(this)"></label>
+        <div class="photo-up" id="notePhotoPreview"></div>
+      </div>
+      <div class="row" style="justify-content:flex-end;margin-top:10px">
+        <button class="btn btn-primary" onclick="App.saveNote()">Сохранить</button>
+      </div>
+    </div>
+    <div class="card"><div class="card-title">Все наблюдения · ${state.notes.length}</div>
+  `;
 
-  html+='<div class="card"><div class="card-title">Все наблюдения · '+state.notes.length+'</div>';
   if(!state.notes.length){
-    html+='<div class="empty"><div class="e">📝</div>Пока нет заметок.</div>';
+    html += `<div class="empty"><div class="e">📝</div>Пока нет заметок.</div>`;
   }else{
     [...state.notes].sort((a,b)=>b.ts-a.ts).forEach(n=>{
-      html+='<div class="note">'
-        +'<div class="note-head"><div>'
-        +'<div class="note-time">'+new Date(n.ts).toLocaleString('ru-RU',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'})+'</div>'
-        +(n.taskName?'<div class="note-link" style="margin-top:4px;display:inline-block">📋 '+esc(n.taskName)+'</div>':'')
-        +'</div>'
-        +'<button class="del" onclick="App.delNote(\''+n.id+'\')">✕</button>'
-        +'</div>'
-        +'<div class="note-text">'+esc(n.text)+'</div>';
+      html += `
+        <div class="note">
+          <div class="note-head">
+            <div>
+              <div class="note-time">${new Date(n.ts).toLocaleString('ru-RU',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'})}</div>
+              ${n.taskName?`<div class="note-link" style="margin-top:4px;display:inline-block">📋 ${esc(n.taskName)}</div>`:''}
+            </div>
+            <button class="del" onclick="App.delNote('${n.id}')">✕</button>
+          </div>
+          <div class="note-text">${esc(n.text)}</div>
+      `;
       if(n.photos && n.photos.length){
-        html+='<div class="note-photos">';
-        n.photos.forEach(p=>{ html+='<img src="'+p+'" onclick="openImg(this.src)">'; });
-        html+='</div>';
+        html += `<div class="note-photos">`;
+        n.photos.forEach(p=>{ html += `<img src="${getSrc(p)}" onclick="openImg(this.src)">`; });
+        html += `</div>`;
       }
-      html+='</div>';
+      html += `</div>`;
     });
   }
-  html+='</div>';
+  html += `</div>`;
   return html;
 }
 function linkOptions(){
@@ -653,7 +709,7 @@ function linkOptions(){
   const yest=addDays(today,-1);
   [today,yest].forEach(d=>{
     (state.tasks[d]||[]).forEach(t=>{
-      out+='<option value="'+esc(t.name)+'">'+(d===today?'Сегодня':'Вчера')+' · '+esc(t.name)+'</option>';
+      out += `<option value="${esc(t.name)}">${d===today?'Сегодня':'Вчера'} · ${esc(t.name)}</option>`;
     });
   });
   return out;
@@ -663,36 +719,48 @@ function linkOptions(){
 function renderAch(){
   const now=new Date();
   const pad=n=>String(n).padStart(2,'0');
-  const nowStr=now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+'T'+pad(now.getHours())+':'+pad(now.getMinutes());
+  const nowStr = now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+'T'+pad(now.getHours())+':'+pad(now.getMinutes());
 
-  let html='<div class="card">'
-    +'<div class="card-title">🏆 Новое достижение</div>'
-    +'<input type="text" id="achTitle" placeholder="Напр.: Первая улыбка" style="margin-bottom:8px">'
-    +'<input type="datetime-local" id="achDate" value="'+nowStr+'" style="margin-bottom:8px">'
-    +'<label class="up-label">📷 Фото<input type="file" accept="image/*" onchange="App.addAchPhoto(this)"></label>'
-    +'<div class="photo-up" id="achPhotoPreview"></div>'
-    +'<div class="row" style="justify-content:flex-end;margin-top:10px">'
-    +'<button class="btn btn-primary" onclick="App.saveAch()">Добавить</button>'
-    +'</div></div>';
+  let html = `
+    <div class="card">
+      <div class="card-title">🏆 Новое достижение</div>
+      <input type="text" id="achTitle" placeholder="Заголовок (напр.: Первая улыбка)" style="margin-bottom:8px">
+      <input type="datetime-local" id="achDate" value="${nowStr}" style="margin-bottom:8px">
+      <textarea id="achDesc" placeholder="Описание (необязательно)" style="margin-bottom:8px;min-height:50px;"></textarea>
+      <div class="row" style="margin-bottom:8px; gap:8px; flex-wrap:wrap;">
+         <label class="up-label">📷 Фото<input type="file" accept="image/*" onchange="App.addAchPhoto(this)"></label>
+         <label class="up-label" style="background:var(--purple-soft);color:#7a6ba8;">🎥 Видео<input type="file" accept="video/*" onchange="App.addAchVideo(this)"></label>
+      </div>
+      <div class="photo-up" id="achPhotoPreview"></div>
+      <div class="row" style="justify-content:flex-end;margin-top:10px">
+        <button class="btn btn-primary" onclick="App.saveAch()">Добавить</button>
+      </div>
+    </div>
+    <div class="card"><div class="card-title">Все достижения · ${state.ach.length}</div>
+  `;
 
-  html+='<div class="card"><div class="card-title">Все достижения · '+state.ach.length+'</div>';
   if(!state.ach.length){
-    html+='<div class="empty"><div class="e">🌟</div>Каждое «впервые» — победа!</div>';
-  }else{
+    html += `<div class="empty"><div class="e">🌟</div>Каждое «впервые» — победа!</div>`;
+  } else {
     [...state.ach].sort((a,b)=>new Date(b.date)-new Date(a.date)).forEach(a=>{
       const d=new Date(a.date);
-      html+='<div class="ach">'
-        +'<div class="row" style="justify-content:space-between"><div>'
-        +'<div class="ach-title">🎉 '+esc(a.title)+'</div>'
-        +'<div class="ach-date">'+d.toLocaleString('ru-RU',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})+'</div>'
-        +'</div>'
-        +'<button class="del" onclick="App.delAch(\''+a.id+'\')">✕</button>'
-        +'</div>';
-      if(a.photo) html+='<img src="'+a.photo+'" onclick="openImg(this.src)">';
-      html+='</div>';
+      html += `
+        <div class="ach">
+          <div class="row" style="justify-content:space-between">
+            <div>
+              <div class="ach-title">🎉 ${esc(a.title)}</div>
+              <div class="ach-date">${d.toLocaleString('ru-RU',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
+            </div>
+            <button class="del" onclick="App.delAch('${a.id}')">✕</button>
+          </div>
+          ${a.desc ? `<div class="ach-desc">${esc(a.desc)}</div>` : ''}
+          ${a.photo ? `<img src="${getSrc(a.photo)}" onclick="openImg(this.src)">` : ''}
+          ${a.video ? `<video src="${getSrc(a.video)}" controls></video>` : ''}
+        </div>
+      `;
     });
   }
-  html+='</div>';
+  html += `</div>`;
   return html;
 }
 
@@ -706,50 +774,67 @@ function renderRituals(){
     const total=r.steps.length;
     const all=total>0 && doneCount===total;
 
-    html+='<div class="ritual">'
-      +'<div class="ritual-head">'
-      +'<div class="ritual-name">'+(r.emoji||'🌙')+' '+esc(r.name)+'</div>'
-      +'<div class="period">'+(r.period==='daily'?'каждый день':r.period==='weekly'?'каждую неделю':'каждый месяц')+'</div>'
-      +'</div>';
+    html += `
+      <div class="ritual">
+        <div class="ritual-head">
+          <div class="ritual-name">${r.emoji||'🌙'} ${esc(r.name)}</div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <button class="btn btn-mini btn-ghost" onclick="App.checkAllRitual('${r.id}')">✅ Все</button>
+            <div class="period">${r.period==='daily'?'каждый день':r.period==='weekly'?'каждую неделю':'каждый месяц'}</div>
+          </div>
+        </div>
+    `;
 
     r.steps.forEach(s=>{
       const on=done[s.id];
-      html+='<div class="step '+(on?'on':'')+'">'
-        +'<button class="step-check '+(on?'on':'')+'" onclick="App.toggleStep(\''+r.id+'\',\''+s.id+'\')">'+(on?'✓':'')+'</button>'
-        +'<div class="step-text">'+esc(s.text)+'</div>'
-        +'<button class="del" onclick="App.delStep(\''+r.id+'\',\''+s.id+'\')">✕</button>'
-        +'</div>';
+      html += `
+        <div class="step ${on?'on':''}">
+          <button class="step-check ${on?'on':''}" onclick="App.toggleStep('${r.id}','${s.id}')">${on?'✓':''}</button>
+          <div class="step-text">${esc(s.text)}</div>
+          <button class="del" onclick="App.delStep('${r.id}','${s.id}')">✕</button>
+        </div>
+      `;
     });
 
-    html+='<div class="row" style="justify-content:space-between;margin-top:10px">'
-      +'<div style="font-size:12px;color:#8d8091">'+(all?'✅ Выполнено!':'Выполнено '+doneCount+' из '+total)+'</div>'
-      +'<button class="del" onclick="App.delRitual(\''+r.id+'\')">Удалить</button>'
-      +'</div>'
-      +'<div class="row" style="margin-top:8px">'
-      +'<input type="text" placeholder="Добавить шаг…" id="stepInput_'+r.id+'" onkeydown="if(event.key===\'Enter\')App.addStep(\''+r.id+'\')">'
-      +'<button class="btn btn-mini btn-ghost" onclick="App.addStep(\''+r.id+'\')">+</button>'
-      +'</div></div>';
+    html += `
+        <div class="row" style="justify-content:space-between;margin-top:10px">
+          <div style="font-size:12px;color:#8d8091">${all?'✅ Выполнено!':'Выполнено '+doneCount+' из '+total}</div>
+          <button class="del" onclick="App.delRitual('${r.id}')">Удалить</button>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <input type="text" placeholder="Добавить шаг…" id="stepInput_${r.id}" onkeydown="if(event.key==='Enter')App.addStep('${r.id}')">
+          <button class="btn btn-mini btn-ghost" onclick="App.addStep('${r.id}')">+</button>
+        </div>
+      </div>
+    `;
   });
 
-  html+='<div class="card">'
-    +'<div class="card-title">Создать ритуал</div>'
-    +'<input type="text" id="ritName" placeholder="Название" style="margin-bottom:8px">'
-    +'<select id="ritPeriod" style="margin-bottom:8px">'
-    +'<option value="daily">Каждый день</option>'
-    +'<option value="weekly">Каждую неделю</option>'
-    +'<option value="monthly">Каждый месяц</option>'
-    +'</select>'
-    +'<button class="btn btn-primary" onclick="App.addRitual()">Создать</button>'
-    +'</div>';
+  html += `
+    <div class="card">
+      <div class="card-title">Создать ритуал</div>
+      <input type="text" id="ritName" placeholder="Название" style="margin-bottom:8px">
+      <select id="ritPeriod" style="margin-bottom:8px">
+        <option value="daily">Каждый день</option>
+        <option value="weekly">Каждую неделю</option>
+        <option value="monthly">Каждый месяц</option>
+      </select>
+      <button class="btn btn-primary" onclick="App.addRitual()">Создать</button>
+    </div>
+  `;
   return html;
 }
 
 /* ============ ПРИКОРМ ============ */
 function renderFood(){
-  return '<div class="card"><div class="empty"><div class="e">🍼</div>'
-    +'<h3 style="font-size:18px;margin-bottom:8px;color:var(--text)">Прикорм</h3>'
-    +'<p>Раздел в разработке 💛</p>'
-    +'</div></div>';
+  return `
+    <div class="card">
+      <div class="empty">
+        <div class="e">🍼</div>
+        <h3 style="font-size:18px;margin-bottom:8px;color:var(--text)">Прикорм</h3>
+        <p>Раздел в разработке 💛</p>
+      </div>
+    </div>
+  `;
 }
 
 /* ============ РЕНДЕР ============ */
@@ -765,7 +850,7 @@ function render(){
       renderNotePhotos();
     } else if(state.activeTab==='achieve'){
       main.innerHTML = renderAch();
-      renderAchPhoto();
+      renderAchPreview();
     } else if(state.activeTab==='rituals'){
       main.innerHTML = renderRituals();
     } else if(state.activeTab==='food'){
@@ -774,10 +859,10 @@ function render(){
     $$('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===state.activeTab));
   }catch(err){
     console.error(err);
-    $('#main').innerHTML='<div class="card"><div class="empty"><div class="e">⚠️</div>'
-      +'<b>Ошибка:</b> '+esc(err.message)+'<br><br>'
-      +'<button class="btn btn-mini btn-primary" onclick="App.resetAll()">Сбросить все данные</button>'
-      +'</div></div>';
+    $('#main').innerHTML=`<div class="card"><div class="empty"><div class="e">⚠️</div>
+      <b>Ошибка:</b> ${esc(err.message)}<br><br>
+      <button class="btn btn-mini btn-primary" onclick="App.resetAll()">Сбросить все данные</button>
+      </div></div>`;
   }
 }
 
@@ -789,6 +874,14 @@ const App={
     window.scrollTo({top:0,behavior:'smooth'});
   },
   changeDate(d){ state.selectedDate=d; state.addTaskOpen=false; render(); },
+  editFocus(){
+    const current = getFocus(state.selectedDate).t;
+    const val = prompt('Введите фокус недели:', current === 'Не задан' ? '' : current);
+    if(val !== null) {
+      state.weekFocus[getMonday(state.selectedDate)] = val.trim();
+      save('weekFocus'); render();
+    }
+  },
 
   /* ---- задачи ---- */
   toggleDone(id){
@@ -809,13 +902,6 @@ const App={
     save('tasks'); render();
   },
   toggleAdd(){ state.addTaskOpen=!state.addTaskOpen; render(); },
-  pickFromPool(i){
-    if(i==='') return;
-    const p=POOL_TASKS[+i];
-    const n=$('#newTaskName'), t=$('#newTaskTarget');
-    if(n) n.value=p.n;
-    if(t) t.value=p.g;
-  },
   addTask(){
     const n=$('#newTaskName'), t=$('#newTaskTarget');
     const name=(n?n.value:'').trim();
@@ -874,22 +960,20 @@ const App={
     if(!total && !focuses.length && !errors.length){ prev.innerHTML=''; return; }
     let html='';
     if(focuses.length){
-      html+='<div style="font-size:12.5px;color:#3f7d6b;font-weight:700;margin-bottom:6px">'
-        +'📥 Фокусы недель: '+focuses.length+'</div>';
+      html+=`<div style="font-size:12.5px;color:#3f7d6b;font-weight:700;margin-bottom:6px">📥 Фокусы недель: ${focuses.length}</div>`;
       focuses.sort().forEach(mk=>{
-        html+='<div class="prev-focus"><b>с '+fmtDMY(mk)+'</b><span>'+esc(weekFocus[mk])+'</span></div>';
+        html+=`<div class="prev-focus"><b>с ${fmtDMY(mk)}</b><span>${esc(weekFocus[mk])}</span></div>`;
       });
     }
     if(total){
-      html+='<div style="font-size:12.5px;color:#7a6ba8;font-weight:700;margin-bottom:6px;margin-top:8px">'
-        +'Задач: '+total+' на '+dates.length+' дн.</div>';
+      html+=`<div style="font-size:12.5px;color:#7a6ba8;font-weight:700;margin-bottom:6px;margin-top:8px">Задач: ${total} на ${dates.length} дн.</div>`;
       dates.slice(0,4).forEach(d=>{
-        html+='<div class="prev-item"><b>'+fmtDMY(d)+'</b><span>'+map[d].length+' задач</span></div>';
+        html+=`<div class="prev-item"><b>${fmtDMY(d)}</b><span>${map[d].length} задач</span></div>`;
       });
-      if(dates.length>4) html+='<div class="hint">…и ещё '+(dates.length-4)+' дн.</div>';
+      if(dates.length>4) html+=`<div class="hint">…и ещё ${dates.length-4} дн.</div>`;
     }
     if(errors.length){
-      html+='<div style="margin-top:8px;font-size:12px;color:#c86b6b">⚠ Пропущено строк: '+errors.length+'</div>';
+      html+=`<div style="margin-top:8px;font-size:12px;color:#c86b6b">⚠ Пропущено строк: ${errors.length}</div>`;
     }
     prev.innerHTML=html;
   },
@@ -931,8 +1015,8 @@ const App={
     save('tasks');
     App.closeImport();
     render();
-    let msg='Импортировано: '+addedTasks+' задач на '+changedDays+' дн.';
-    if(focuses.length) msg+=' · фокусов: '+focuses.length;
+    let msg=`Импортировано: ${addedTasks} задач на ${changedDays} дн.`;
+    if(focuses.length) msg+=` · фокусов: ${focuses.length}`;
     toast(msg);
   },
 
@@ -940,8 +1024,8 @@ const App={
   async addNotePhoto(input){
     const files=[...input.files].slice(0,5);
     for(const f of files){
-      const data=await compressImage(f);
-      state.pendingPhotos.push(data);
+      const data=await saveMediaFile(f, false);
+      if(data) state.pendingPhotos.push(data);
     }
     input.value=''; renderNotePhotos();
   },
@@ -967,19 +1051,37 @@ const App={
   /* ---- достижения ---- */
   async addAchPhoto(input){
     const f=input.files[0]; if(!f) return;
-    state._achPhoto=await compressImage(f);
-    input.value=''; renderAchPhoto();
+    const data = await saveMediaFile(f, false);
+    if(data) {
+      state._achPhoto=data; 
+      renderAchPreview();
+    }
+    input.value=''; 
   },
+  async addAchVideo(input){
+    const f=input.files[0]; if(!f) return;
+    const data = await saveMediaFile(f, true);
+    if(data) {
+      state._achVideo=data; 
+      renderAchPreview();
+    }
+    input.value='';
+  },
+  _delAchPhoto(){ state._achPhoto=''; renderAchPreview(); },
+  _delAchVideo(){ state._achVideo=null; renderAchPreview(); },
   saveAch(){
-    const t=$('#achTitle'), d=$('#achDate');
+    const t=$('#achTitle'), d=$('#achDate'), desc=$('#achDesc');
     const title=t?t.value.trim():'';
-    if(!title){ toast('Введите название'); return; }
+    if(!title){ toast('Введите заголовок'); return; }
     state.ach.push({
       id:uid(), title,
       date: (d&&d.value)||new Date().toISOString(),
-      photo: state._achPhoto||''
+      desc: desc?desc.value.trim():'',
+      photo: state._achPhoto||'',
+      video: state._achVideo||null
     });
     state._achPhoto='';
+    state._achVideo=null;
     save('ach'); render(); toast('Достижение записано 🎉');
   },
   delAch(id){
@@ -995,6 +1097,14 @@ const App={
     if(!r.completions) r.completions={};
     if(!r.completions[today]) r.completions[today]={};
     r.completions[today][sid]=!r.completions[today][sid];
+    save('rituals'); render();
+  },
+  checkAllRitual(rid){
+    const r=state.rituals.find(x=>x.id===rid); if(!r) return;
+    const today=todayStr();
+    if(!r.completions) r.completions={};
+    if(!r.completions[today]) r.completions[today]={};
+    r.steps.forEach(s=>{ r.completions[today][s.id]=true; });
     save('rituals'); render();
   },
   addStep(rid){
@@ -1030,7 +1140,7 @@ const App={
   /* ---- АВАТАР ---- */
   async loadAvatar(input){
     const f=input.files[0]; if(!f) return;
-    state._newAvatar=await compressImage(f,320);
+    state._newAvatar=await saveMediaFile(f, false);
     input.value='';
     App._renderAvatarPreview();
   },
@@ -1042,7 +1152,7 @@ const App={
     const img=$('#avatarPreview'), emoji=$('#avatarPreviewEmoji');
     const src = (state._newAvatar!==undefined) ? state._newAvatar : state.avatar;
     if(src){
-      img.src=src; img.style.display='block';
+      img.src=getSrc(src); img.style.display='block';
       emoji.style.display='none';
     } else {
       img.style.display='none';
@@ -1084,19 +1194,23 @@ function renderNotePhotos(){
   const el=$('#notePhotoPreview'); if(!el) return;
   let html='';
   state.pendingPhotos.forEach((p,i)=>{
-    html+='<div class="photo-prev"><img src="'+p+'"><button onclick="App._delNotePhoto('+i+')">✕</button></div>';
+    html+=`<div class="photo-prev"><img src="${getSrc(p)}"><button onclick="App._delNotePhoto(${i})">✕</button></div>`;
   });
   el.innerHTML=html;
 }
 App._delNotePhoto=(i)=>{ state.pendingPhotos.splice(i,1); renderNotePhotos(); };
 
-function renderAchPhoto(){
+function renderAchPreview(){
   const el=$('#achPhotoPreview'); if(!el) return;
-  el.innerHTML = state._achPhoto
-    ? '<div class="photo-prev"><img src="'+state._achPhoto+'"><button onclick="App._delAchPhoto()">✕</button></div>'
-    : '';
+  let html='';
+  if(state._achPhoto) {
+    html+=`<div class="photo-prev"><img src="${getSrc(state._achPhoto)}"><button onclick="App._delAchPhoto()">✕</button></div>`;
+  }
+  if(state._achVideo) {
+    html+=`<div class="photo-prev"><video src="${getSrc(state._achVideo)}"></video><button onclick="App._delAchVideo()">✕</button></div>`;
+  }
+  el.innerHTML=html;
 }
-App._delAchPhoto=()=>{ state._achPhoto=''; renderAchPhoto(); };
 
 /* ============ СОБЫТИЯ ============ */
 $('#tabs').addEventListener('click',e=>{
@@ -1114,7 +1228,7 @@ $('#importModal').addEventListener('click',e=>{
 
 /* ============ ИНИЦИАЛИЗАЦИЯ ============ */
 (function init(){
-  if(!state.rituals.length){
+  if(!state.rituals.length && !localStorage.getItem(LS.onboarded)){
     state.rituals=[
       {id:uid(),name:'Ритуал сна',emoji:'🌙',period:'daily',steps:[
         {id:uid(),text:'Выключить свет'},
@@ -1133,14 +1247,16 @@ $('#importModal').addEventListener('click',e=>{
     ];
     save('rituals');
   }
+  
   ensureTasksFor(todayStr());
   finalizePastTasks();
   render();
 
-  // Онбординг — только при первом запуске
   if(!localStorage.getItem(LS.onboarded)){
     setTimeout(()=>App.openSettings(true), 300);
   }
+
+  setTimeout(() => checkForUpdates(false), 3000);
 })();
 </script>
 </body>
