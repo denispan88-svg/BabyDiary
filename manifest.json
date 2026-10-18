@@ -1,0 +1,21 @@
+{
+  "name": "Дневник развития",
+  "short_name": "Дневник",
+  "description": "Планер мамы: занятия, заметки, достижения и ритуалы",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#fdf8fa",
+  "theme_color": "#f7a5c2",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
