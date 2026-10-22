@@ -47,7 +47,7 @@ jobs:
       - name: Install dependencies
         run: |
           npm init -y
-          npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/preferences @capacitor/app @capacitor/filesystem @capacitor/assets
+          npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/preferences @capacitor/app @capacitor/filesystem @capacitor/assets @capawesome/capacitor-file-picker @capacitor-community/file-opener
 
       - name: Init Capacitor
         run: npx cap init "Дневник развития" "com.babydiary.app" --web-dir=www

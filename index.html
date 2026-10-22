@@ -45,7 +45,6 @@
       padding: 16px
     }
 
-    /* HEADER */
     .header {
       display: flex;
       align-items: center;
@@ -101,7 +100,6 @@
       display: block
     }
 
-    /* BOTTOM NAV */
     .bottom-nav {
       position: fixed;
       left: 0;
@@ -661,6 +659,48 @@
       margin-top: 10px;
     }
 
+    /* NEW: карточка видео-референса в достижении */
+    .video-thumb {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 10px;
+      padding: 24px 16px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #b39ddb, #8fd0c2);
+      color: #fff;
+      cursor: pointer;
+      min-height: 110px;
+      transition: .15s
+    }
+
+    .video-thumb:active {
+      transform: scale(.99)
+    }
+
+    .video-thumb-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, .95);
+      color: #463a49;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, .2)
+    }
+
+    .video-thumb-hint {
+      font-size: 12.5px;
+      font-weight: 600;
+      opacity: .95;
+      text-align: center
+    }
+
     .ritual {
       background: #fff;
       border-radius: 16px;
@@ -885,7 +925,6 @@
       color: #3f7d6b
     }
 
-    /* Avatar edit */
     .avatar-edit {
       width: 92px;
       height: 92px;
@@ -938,7 +977,6 @@
     <main id="main"></main>
   </div>
 
-  <!-- нижняя навигация -->
   <nav class="bottom-nav">
     <div class="bottom-nav-inner" id="tabs">
       <button class="tab active" data-tab="tasks"><span class="ti">📋</span>Занятия</button>
@@ -949,7 +987,6 @@
     </div>
   </nav>
 
-  <!-- модалка: настройки -->
   <div class="modal" id="settingsModal">
     <div class="modal-inner">
       <h3 id="settingsTitle">Настройки</h3>
@@ -981,7 +1018,6 @@
     </div>
   </div>
 
-  <!-- модалка: обновление -->
   <div class="modal" id="updateModal">
     <div class="modal-inner">
       <h3>🚀 Доступно обновление!</h3>
@@ -1001,7 +1037,6 @@
     </div>
   </div>
 
-  <!-- модалка: импорт -->
   <div class="modal" id="importModal">
     <div class="modal-inner">
       <h3>📥 Импорт плана из txt</h3>
@@ -1037,10 +1072,12 @@
 
   <div id="lightbox" onclick="this.classList.remove('show')"><img id="lbImg" src=""></div>
   <div class="toast" id="toast"></div>
+  <input type="file" id="_achVideoFallbackInput" accept="video/*" style="display:none"
+    onchange="App._addAchVideoFallback(this)">
 
   <script>
     /* ============ НАСТРОЙКИ ОБНОВЛЕНИЙ ============ */
-    const APP_VERSION = '1.0.2'; // FIX: bump версии после исправления багов
+    const APP_VERSION = '1.0.3';
     const BUILD_TAG = 'local';
     const GITHUB_REPO = 'denispan88-svg/BabyDiary';
 
@@ -1056,8 +1093,7 @@
     function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 2200) }
     function openImg(src) { $('#lbImg').src = src; $('#lightbox').classList.add('show') }
 
-    /* ============ РАБОТА С ФАЙЛАМИ (ТОЛЬКО ДЛЯ ПРИЛОЖЕНИЯ) ============ */
-    // FIX: getSrc больше не падает в браузере без Capacitor и не трогает data:/http:/blob: URL
+    /* ============ РАБОТА С ФАЙЛАМИ ============ */
     function getSrc(uri) {
       if (!uri) return '';
       if (uri.startsWith('data:') || uri.startsWith('http://') || uri.startsWith('https://') || uri.startsWith('blob:')) {
@@ -1066,10 +1102,9 @@
       if (window.Capacitor && typeof Capacitor.convertFileSrc === 'function') {
         return Capacitor.convertFileSrc(uri);
       }
-      return uri; // превью в браузере
+      return uri;
     }
 
-    // FIX: обработка onerror — если файл битый, промис не зависнет
     function compressImage(file, max = 900) {
       return new Promise(res => {
         const fr = new FileReader();
@@ -1089,12 +1124,11 @@
       })
     }
 
-    // FIX: проверка размера видео, обработка ошибок чтения, fallback для браузера
+    // Копирование файла в приватную папку приложения (используется только для фото)
     async function saveMediaFile(file, isVideo) {
       if (!file) return null;
-      if (isVideo && file.size > 30 * 1024 * 1024) {
-        alert('Видео больше 30 МБ. Выберите файл поменьше.');
-        return null;
+      if (isVideo && file.size > 100 * 1024 * 1024) {
+        if (!confirm('Видео больше 100 МБ, на слабых устройствах может не сохраниться. Продолжить?')) return null;
       }
 
       let base64Data = '';
@@ -1108,12 +1142,8 @@
       } else {
         base64Data = await compressImage(file);
       }
-      if (!base64Data) {
-        alert('Не удалось прочитать файл.');
-        return null;
-      }
+      if (!base64Data) { alert('Не удалось прочитать файл.'); return null; }
 
-      // Fallback для браузера — вернём dataURL, чтобы приложение можно было отладить
       if (!window.Capacitor || !Capacitor.Plugins || !Capacitor.Plugins.Filesystem) {
         return base64Data;
       }
@@ -1135,8 +1165,65 @@
       }
     }
 
+    // NEW: получить URI видео из галереи БЕЗ копирования в приложение
+    async function pickVideoReference() {
+      if (!window.Capacitor?.Plugins?.FilePicker) {
+        return { fallback: true };
+      }
+      try {
+        const result = await Capacitor.Plugins.FilePicker.pickFiles({
+          types: ['video/*'],
+          limit: 1,
+          readData: false
+        });
+        const f = result.files && result.files[0];
+        if (!f) return { cancelled: true };
+        const uri = f.uri || f.path;
+        if (!uri) return { error: 'Не удалось получить путь к файлу' };
+        return { uri };
+      } catch (e) {
+        return { error: e.message || 'Ошибка выбора файла' };
+      }
+    }
+
+    // NEW: открыть видео — через системный плеер для URI, или in-app для data:
+    async function openVideoSystem(uri) {
+      if (!uri) return;
+      if (uri.startsWith('data:') || uri.startsWith('blob:')) {
+        showVideoInApp(uri);
+        return;
+      }
+      if (window.Capacitor?.Plugins?.FileOpener) {
+        try {
+          await Capacitor.Plugins.FileOpener.open({
+            filePath: uri,
+            contentType: 'video/mp4'
+          });
+          return;
+        } catch (e) {
+          console.warn('FileOpener failed:', e);
+          alert('Не удалось открыть видео. Возможно, файл был перемещён или удалён из галереи, либо приложению не выдан доступ. Прикрепите видео заново.');
+          return;
+        }
+      }
+      // На случай отсутствия плагина — fallback
+      showVideoInApp(uri);
+    }
+
+    function showVideoInApp(uri) {
+      const lb = $('#lightbox');
+      lb.innerHTML = '<video src="' + getSrc(uri) + '" controls autoplay '
+        + 'style="max-width:100%;max-height:100%;border-radius:8px"></video>';
+      lb.classList.add('show');
+      lb.onclick = (e) => {
+        if (e.target.tagName === 'VIDEO') return;
+        lb.classList.remove('show');
+        lb.innerHTML = '<img id="lbImg" src="">';
+        lb.onclick = () => lb.classList.remove('show');
+      };
+    }
+
     /* ============ ПРОВЕРКА ОБНОВЛЕНИЙ ============ */
-    // FIX: метка времени пишется только после успешного запроса
     async function checkForUpdates(force = false) {
       if (BUILD_TAG === 'local') return;
       const lastCheck = localStorage.getItem('ld_last_update_check');
@@ -1210,7 +1297,6 @@
     if (!Array.isArray(state.rituals)) state.rituals = [];
     if (typeof state.weekFocus !== 'object' || state.weekFocus === null || Array.isArray(state.weekFocus)) state.weekFocus = {};
 
-    // FIX: маппинг state.motherName -> LS.mother, чтобы имя мамы реально сохранялось
     function save(k) {
       const lsKey = (k === 'motherName') ? LS.mother : LS[k];
       if (lsKey === undefined) { console.warn('save: неизвестный ключ', k); return; }
@@ -1220,7 +1306,6 @@
     }
 
     /* ============ НЕДЕЛЯ ============ */
-    // FIX: считается через UTC, устойчиво к DST
     function getWeekNum(dateStr) {
       if (!state.birth) return 1;
       const b = new Date(state.birth + 'T00:00:00');
@@ -1239,7 +1324,6 @@
       return todayStr(d);
     }
 
-    // FIX: ключ периода для ритуалов (день / неделя / месяц)
     function getPeriodKey(period) {
       const t = todayStr();
       if (period === 'weekly') return getMonday(t);
@@ -1257,7 +1341,6 @@
       return { week: wn, t: 'Не задан', e: '📅', d: 'Нажмите ✏️ чтобы указать фокус' };
     }
 
-    // FIX: больше не пишет в localStorage прямо из рендера
     function ensureTasksFor(date) {
       if (!state.tasks[date]) {
         state.tasks[date] = [];
@@ -1278,7 +1361,6 @@
     }
 
     /* ============ ПАРСЕР TXT ============ */
-    // FIX: round-trip проверка даты — 31.02 больше не пролезет
     function parsePlanText(text) {
       const map = {}, weekFocus = {}, errors = [];
       const lines = String(text || '').split(/\r?\n/);
@@ -1304,7 +1386,6 @@
         if (dNum < 1 || dNum > 31 || moNum < 1 || moNum > 12) {
           errors.push({ line: idx + 1, text: raw }); return;
         }
-        // Ключевая проверка: реальная календарная дата
         const probe = new Date(yNum, moNum - 1, dNum);
         if (probe.getFullYear() !== yNum || probe.getMonth() !== moNum - 1 || probe.getDate() !== dNum) {
           errors.push({ line: idx + 1, text: raw }); return;
@@ -1441,7 +1522,7 @@
       return { done, failed, total };
     }
 
-    /* ============ ЗАМЕТКИ ============ */
+    /* ============ ЗАМЕТКИ (только фото) ============ */
     function renderNotes() {
       let html = '<div class="card">'
         + '<div class="card-title">Новая заметка / наблюдение</div>'
@@ -1504,7 +1585,7 @@
         + '<textarea id="achDesc" placeholder="Описание (необязательно)" style="margin-bottom:8px;min-height:50px;"></textarea>'
         + '<div class="row" style="margin-bottom:8px; gap:8px; flex-wrap:wrap;">'
         + '<label class="up-label">📷 Фото<input type="file" accept="image/*" onchange="App.addAchPhoto(this)"></label>'
-        + '<label class="up-label" style="background:var(--purple-soft);color:#7a6ba8;">🎥 Видео<input type="file" accept="video/*" onchange="App.addAchVideo(this)"></label>'
+        + '<button type="button" class="up-label" style="background:var(--purple-soft);color:#7a6ba8;border:none;" onclick="App.addAchVideo()">🎥 Видео</button>'
         + '</div>'
         + '<div class="photo-up" id="achPhotoPreview"></div>'
         + '<div class="row" style="justify-content:flex-end;margin-top:10px">'
@@ -1526,7 +1607,18 @@
             + '</div>';
           if (a.desc) html += '<div class="ach-desc">' + esc(a.desc) + '</div>';
           if (a.photo) html += '<img src="' + getSrc(a.photo) + '" onclick="openImg(this.src)">';
-          if (a.video) html += '<video src="' + getSrc(a.video) + '" controls></video>';
+          if (a.video) {
+            if (a.video.startsWith('data:') || a.video.startsWith('blob:')) {
+              html += '<video src="' + getSrc(a.video) + '" controls></video>';
+            } else {
+              // Ссылка на файл в галерее — открываем системным плеером
+              html += '<div class="video-thumb" data-uri="' + esc(a.video) + '" '
+                + 'onclick="App.openVideoSystem(this.dataset.uri)">'
+                + '<div class="video-thumb-icon">▶</div>'
+                + '<div class="video-thumb-hint">Нажмите, чтобы открыть видео</div>'
+                + '</div>';
+            }
+          }
           html += '</div>';
         });
       }
@@ -1538,7 +1630,6 @@
     function renderRituals() {
       let html = '';
       state.rituals.forEach(r => {
-        // FIX: прогресс берётся по ключу периода (день/неделя/месяц)
         const periodKey = getPeriodKey(r.period);
         const done = (r.completions && r.completions[periodKey]) || {};
         const doneCount = Object.values(done).filter(Boolean).length;
@@ -1629,7 +1720,6 @@
         render();
         window.scrollTo({ top: 0, behavior: 'smooth' });
       },
-      // FIX: пустая дата не ломает состояние
       changeDate(d) {
         if (!d) return;
         state.selectedDate = d;
@@ -1646,7 +1736,6 @@
       },
 
       /* ---- задачи ---- */
-      // FIX: предупреждение при снятии отметки у задачи в прошлом
       toggleDone(id) {
         const list = state.tasks[state.selectedDate]; if (!list) return;
         const t = list.find(x => x.id === id);
@@ -1827,15 +1916,27 @@
         }
         input.value = '';
       },
-      async addAchVideo(input) {
+      // NEW: видео через путь — без копирования
+      async addAchVideo() {
+        const picked = await pickVideoReference();
+        if (picked.cancelled) return;
+        if (picked.uri) {
+          state._achVideo = picked.uri;
+          renderAchPreview();
+          return;
+        }
+        if (picked.error) { alert(picked.error); return; }
+        if (picked.fallback) {
+          document.getElementById('_achVideoFallbackInput').click();
+        }
+      },
+      async _addAchVideoFallback(input) {
         const f = input.files[0]; if (!f) return;
         const data = await saveMediaFile(f, true);
-        if (data) {
-          state._achVideo = data;
-          renderAchPreview();
-        }
+        if (data) { state._achVideo = data; renderAchPreview(); }
         input.value = '';
       },
+      async openVideoSystem(uri) { return openVideoSystem(uri); },
       _delAchPhoto() { state._achPhoto = ''; renderAchPreview(); },
       _delAchVideo() { state._achVideo = null; renderAchPreview(); },
       saveAch() {
@@ -1860,7 +1961,6 @@
       },
 
       /* ---- ритуалы ---- */
-      // FIX: используем getPeriodKey
       toggleStep(rid, sid) {
         const r = state.rituals.find(x => x.id === rid); if (!r) return;
         const periodKey = getPeriodKey(r.period);
@@ -1945,14 +2045,12 @@
         state.motherName = $('#setMother').value.trim();
         state.birth = $('#setBirth').value;
         state.avatar = state._newAvatar || '';
-        // FIX: save('motherName') теперь маппится на LS.mother внутри save()
         save('name'); save('motherName'); save('birth'); save('avatar');
         localStorage.setItem(LS.onboarded, '1');
         $('#settingsModal').classList.remove('show');
         render();
         toast('Сохранено ✨');
       },
-      // FIX: чистим также метку проверки обновлений
       resetAll() {
         if (!confirm('Удалить все данные приложения? Это необратимо.')) return;
         Object.values(LS).forEach(k => localStorage.removeItem(k));
@@ -1980,7 +2078,14 @@
         html += '<div class="photo-prev"><img src="' + getSrc(state._achPhoto) + '"><button onclick="App._delAchPhoto()">✕</button></div>';
       }
       if (state._achVideo) {
-        html += '<div class="photo-prev"><video src="' + getSrc(state._achVideo) + '"></video><button onclick="App._delAchVideo()">✕</button></div>';
+        if (state._achVideo.startsWith('data:') || state._achVideo.startsWith('blob:')) {
+          html += '<div class="photo-prev"><video src="' + getSrc(state._achVideo) + '"></video><button onclick="App._delAchVideo()">✕</button></div>';
+        } else {
+          html += '<div class="photo-prev">'
+            + '<div style="width:70px;height:70px;border-radius:10px;background:linear-gradient(135deg,#b39ddb,#8fd0c2);display:flex;align-items:center;justify-content:center;font-size:26px;">🎥</div>'
+            + '<button onclick="App._delAchVideo()">✕</button>'
+            + '</div>';
+        }
       }
       el.innerHTML = html;
     }
