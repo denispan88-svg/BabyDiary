@@ -31,7 +31,6 @@ jobs:
         run: |
           mkdir -p www
           cp index.html www/
-          cp manifest.json www/
           cp icon-192.png www/ 2>/dev/null || true
           cp icon-512.png www/ 2>/dev/null || true
 
@@ -57,9 +56,6 @@ jobs:
 
       - name: Add Android platform
         run: npx cap add android
-
-      - name: Generate app icons
-        run: npx @capacitor/assets generate --android
 
       - name: Fix Kotlin version conflict
         run: |

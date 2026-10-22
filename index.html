@@ -1,1263 +1,1974 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Дневник развития • Планер мамы</title>
-<style>
-:root{
-  --pink:#f7a5c2; --pink-soft:#fde3ed; --purple:#b39ddb; --purple-soft:#ede7f6;
-  --mint:#8fd0c2; --mint-soft:#e0f3ee;
-  --text:#463a49; --text-light:#8d8091; --card:#fff;
-  --border:#f1e6ee; --shadow:0 6px 24px rgba(180,150,180,.09);
-  --ok:#5fbf9b; --fail:#e88a8a;
-}
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-  background:linear-gradient(180deg,#fdf8fa 0%,#f7f2fb 100%);color:var(--text);
-  min-height:100vh;font-size:15px;line-height:1.5;
-  padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
-.app{max-width:760px;margin:0 auto;padding:16px}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Дневник развития • Планер мамы</title>
+  <style>
+    :root {
+      --pink: #f7a5c2;
+      --pink-soft: #fde3ed;
+      --purple: #b39ddb;
+      --purple-soft: #ede7f6;
+      --mint: #8fd0c2;
+      --mint-soft: #e0f3ee;
+      --text: #463a49;
+      --text-light: #8d8091;
+      --card: #fff;
+      --border: #f1e6ee;
+      --shadow: 0 6px 24px rgba(180, 150, 180, .09);
+      --ok: #5fbf9b;
+      --fail: #e88a8a;
+    }
 
-/* HEADER */
-.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding:4px 6px;gap:12px}
-.header-info{min-width:0;flex:1}
-.header h1{font-size:20px;font-weight:700;letter-spacing:-.3px;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.header .sub{font-size:12px;color:var(--text-light);margin-top:2px;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.avatar{width:52px;height:52px;border-radius:50%;flex-shrink:0;
-  background:linear-gradient(135deg,var(--pink),var(--purple));
-  display:flex;align-items:center;justify-content:center;font-size:26px;cursor:pointer;
-  box-shadow:0 4px 14px rgba(200,150,200,.35);overflow:hidden;position:relative}
-.avatar img{width:100%;height:100%;object-fit:cover;display:block}
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent
+    }
 
-/* BOTTOM NAV */
-.bottom-nav{
-  position:fixed;left:0;right:0;bottom:0;z-index:50;
-  background:#fff;border-top:1px solid var(--border);
-  box-shadow:0 -4px 24px rgba(180,150,180,.13);
-  padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));
-}
-.bottom-nav-inner{display:flex;gap:2px;max-width:760px;margin:0 auto}
-.tab{flex:1;min-width:0;padding:8px 2px;border-radius:12px;border:none;background:transparent;
-  font-family:inherit;font-size:10.5px;font-weight:600;color:var(--text-light);cursor:pointer;
-  transition:.2s;white-space:nowrap;display:flex;flex-direction:column;align-items:center;gap:2px}
-.tab .ti{font-size:18px;line-height:1}
-.tab.active{background:linear-gradient(135deg,var(--pink-soft),var(--purple-soft));color:var(--text)}
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(180deg, #fdf8fa 0%, #f7f2fb 100%);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 15px;
+      line-height: 1.5;
+      padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px))
+    }
 
-.card{background:var(--card);border-radius:18px;padding:16px 18px;margin-bottom:14px;box-shadow:var(--shadow)}
-.card-title{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;
-  color:var(--text-light);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
-.focus-card{background:linear-gradient(135deg,#fff0f6 0%,#efe7ff 100%);border-radius:20px;
-  padding:18px 20px;margin-bottom:14px;position:relative;overflow:hidden;box-shadow:var(--shadow)}
-.focus-card::before{content:'';position:absolute;top:-50px;right:-50px;width:150px;height:150px;
-  background:radial-gradient(circle,rgba(255,255,255,.75),transparent 70%);border-radius:50%}
-.fw{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:#b07c9c;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center}
-.ft{font-size:21px;font-weight:700;display:flex;align-items:center;gap:8px;margin-bottom:4px;position:relative}
-.fd{font-size:13px;color:#8a6e85;position:relative}
-button{font-family:inherit}
-.btn{border:none;border-radius:12px;padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer;transition:.15s}
-.btn-primary{background:linear-gradient(135deg,var(--pink),var(--purple));color:#fff;
-  box-shadow:0 4px 14px rgba(200,140,200,.35)}
-.btn-primary:active{transform:scale(.97)}
-.btn-ghost{background:var(--pink-soft);color:#a5668e}
-.btn-ghost:active{background:#f9cfe0}
-.btn-mini{padding:6px 10px;font-size:12px;border-radius:9px}
-input,textarea,select{font-family:inherit;font-size:14px;border:1.5px solid var(--border);border-radius:11px;
-  padding:9px 12px;background:#fdfbfc;color:var(--text);outline:none;width:100%;transition:.15s}
-input:focus,textarea:focus,select:focus{border-color:var(--pink);background:#fff}
-textarea{resize:vertical;min-height:60px}
-.row{display:flex;gap:8px;align-items:center}
-.task{background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:12px 14px;
-  margin-bottom:9px;transition:.2s;position:relative;overflow:hidden}
-.task.done{background:#f3fbf7;border-color:#cdeadd}
-.task.failed{background:#fdf3f3;border-color:#f1d4d4;opacity:.85}
-.task.pending{border-left:4px solid var(--pink)}
-.task.done::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--ok)}
-.task.failed::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--fail)}
-.t-head{display:flex;gap:10px;align-items:flex-start}
-.t-check{flex-shrink:0;width:28px;height:28px;border-radius:50%;border:2px solid var(--pink);
-  background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;
-  font-size:15px;color:var(--pink);transition:.15s;padding:0;line-height:1}
-.t-check:hover{background:var(--pink-soft)}
-.t-check.done{background:var(--ok);border-color:var(--ok);color:#fff}
-.t-check.failed{background:var(--fail);border-color:var(--fail);color:#fff;cursor:not-allowed}
-.t-info{flex:1;min-width:0}
-.t-name{font-weight:600;font-size:14.5px;line-height:1.35}
-.task.done .t-name{color:#4e8a72}
-.task.failed .t-name{color:#a86d6d;text-decoration:line-through;text-decoration-color:#d49a9a}
-.t-meta{font-size:12px;color:var(--text-light);margin-top:3px;display:flex;flex-wrap:wrap;gap:8px}
-.t-badge{display:inline-block;background:var(--purple-soft);color:#7a6ba8;border-radius:6px;
-  padding:1px 7px;font-size:11px;font-weight:600}
-.t-badge.time{background:var(--mint-soft);color:#4a8b7e}
-.t-controls{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:9px}
-.t-controls input{font-size:12.5px;padding:7px 9px}
-.t-controls .full{grid-column:1/-1}
-.t-link{background:none;border:none;color:#a17bb8;font-size:12px;cursor:pointer;
-  padding:2px 0;font-weight:600}
-.t-actions{display:flex;justify-content:space-between;align-items:center;margin-top:6px}
-.datebar{display:flex;gap:8px;align-items:center;background:#fff;border-radius:14px;
-  padding:10px 12px;margin-bottom:14px;box-shadow:var(--shadow)}
-.datebar input[type=date]{flex:1;border:none;background:transparent;padding:0;font-weight:600;font-size:15px}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
-.stat{background:#faf6fb;border-radius:12px;padding:10px;text-align:center}
-.stat .n{font-size:22px;font-weight:700;color:var(--text)}
-.stat.ok .n{color:var(--ok)} .stat.fail .n{color:var(--fail)}
-.stat .l{font-size:11px;color:var(--text-light);margin-top:2px}
-.note{background:#fff;border-radius:16px;padding:14px;margin-bottom:12px;box-shadow:var(--shadow)}
-.note-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px}
-.note-time{font-size:11.5px;color:var(--text-light);font-weight:600}
-.note-link{font-size:11px;background:var(--pink-soft);color:#a5668e;padding:3px 8px;border-radius:7px;font-weight:600}
-.note-text{font-size:14px;white-space:pre-wrap;word-wrap:break-word}
-.note-photos{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
-.note-photos img{width:76px;height:76px;object-fit:cover;border-radius:10px;cursor:pointer}
-.del{background:none;border:none;color:#c9a8b5;font-size:16px;cursor:pointer;padding:0 4px}
-.photo-up{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-.photo-prev{position:relative}
-.photo-prev img, .photo-prev video{width:70px;height:70px;object-fit:cover;border-radius:10px}
-.photo-prev button{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;
-  background:#e88a8a;color:#fff;border:none;font-size:12px;cursor:pointer;line-height:1}
-.up-label{display:inline-flex;align-items:center;gap:6px;background:var(--pink-soft);color:#a5668e;
-  padding:9px 14px;border-radius:11px;font-size:13px;font-weight:600;cursor:pointer}
-.up-label input{display:none}
-.ach{background:linear-gradient(135deg,#fff9f0,#fef4fa);border-radius:16px;padding:14px;
-  margin-bottom:12px;box-shadow:var(--shadow)}
-.ach-title{font-size:16px;font-weight:700;margin-bottom:4px;display:flex;gap:8px;align-items:center}
-.ach-date{font-size:12px;color:var(--text-light)}
-.ach-desc{font-size:13px;margin-top:8px;color:var(--text);white-space:pre-wrap;}
-.ach img, .ach video{width:100%;max-height:300px;object-fit:cover;border-radius:12px;margin-top:10px;}
-.ritual{background:#fff;border-radius:16px;padding:14px 16px;margin-bottom:12px;box-shadow:var(--shadow)}
-.ritual-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-.ritual-name{font-size:16px;font-weight:700;display:flex;gap:8px;align-items:center}
-.period{font-size:11px;background:var(--mint-soft);color:#4a8b7e;padding:3px 8px;border-radius:7px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
-.step{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid #f7f0f5}
-.step:last-child{border-bottom:none}
-.step-check{width:24px;height:24px;border-radius:8px;border:2px solid var(--purple);
-  background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;
-  color:#fff;font-size:14px;flex-shrink:0;padding:0;transition:.15s}
-.step-check.on{background:var(--purple);border-color:var(--purple)}
-.step-text{font-size:14px;flex:1}
-.step.on .step-text{color:var(--text-light);text-decoration:line-through}
-.add-form{background:#fbf7fd;border:1.5px dashed #e0d3ec;border-radius:14px;padding:12px;margin-top:8px}
-.add-form .row{margin-bottom:8px}
-.hint{font-size:12px;color:var(--text-light);margin-top:6px;line-height:1.4}
-.empty{text-align:center;padding:34px 20px;color:var(--text-light)}
-.empty .e{font-size:42px;margin-bottom:10px;opacity:.7}
-.modal{position:fixed;inset:0;background:rgba(70,50,70,.55);display:none;
-  align-items:center;justify-content:center;padding:20px;z-index:100;backdrop-filter:blur(4px)}
-.modal.show{display:flex}
-.modal-inner{background:#fff;border-radius:20px;padding:22px;max-width:460px;width:100%;max-height:90vh;overflow-y:auto}
-.modal-inner h3{font-size:17px;margin-bottom:14px}
-#lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;align-items:center;
-  justify-content:center;z-index:200;padding:20px;cursor:zoom-out}
-#lightbox.show{display:flex}
-#lightbox img{max-width:100%;max-height:100%;border-radius:8px}
-.toast{position:fixed;bottom:calc(110px + env(safe-area-inset-bottom,0px));left:50%;
-  transform:translateX(-50%) translateY(80px);
-  background:#463a49;color:#fff;padding:11px 20px;border-radius:12px;font-size:13.5px;
-  font-weight:600;transition:.3s;z-index:300;opacity:0;pointer-events:none;white-space:nowrap}
-.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
-code{background:#f5eefa;color:#7a6ba8;padding:2px 6px;border-radius:5px;font-size:12.5px}
-.prev-item{display:flex;justify-content:space-between;gap:8px;padding:6px 10px;background:#faf7fc;
-  border-radius:8px;margin-bottom:5px;font-size:12.5px}
-.prev-item b{color:#7a6ba8}
-.prev-focus{background:#eaf7f1;color:#3f7d6b;border-radius:8px;padding:6px 10px;
-  margin-bottom:5px;font-size:12.5px;display:flex;justify-content:space-between;gap:8px}
-.prev-focus b{color:#3f7d6b}
+    .app {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 16px
+    }
 
-/* Avatar edit */
-.avatar-edit{width:92px;height:92px;border-radius:50%;margin:0 auto;
-  background:linear-gradient(135deg,var(--pink),var(--purple));
-  display:flex;align-items:center;justify-content:center;font-size:46px;cursor:pointer;
-  box-shadow:0 6px 20px rgba(200,150,200,.4);overflow:hidden;transition:.15s}
-.avatar-edit:hover{transform:scale(1.03)}
-.avatar-edit img{width:100%;height:100%;object-fit:cover}
-.field-label{font-size:13px;font-weight:600;color:#8d8091;display:block;margin-bottom:4px}
-</style>
+    /* HEADER */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      padding: 4px 6px;
+      gap: 12px
+    }
+
+    .header-info {
+      min-width: 0;
+      flex: 1
+    }
+
+    .header h1 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -.3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis
+    }
+
+    .header .sub {
+      font-size: 12px;
+      color: var(--text-light);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis
+    }
+
+    .avatar {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: linear-gradient(135deg, var(--pink), var(--purple));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(200, 150, 200, .35);
+      overflow: hidden;
+      position: relative
+    }
+
+    .avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block
+    }
+
+    /* BOTTOM NAV */
+    .bottom-nav {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 50;
+      background: #fff;
+      border-top: 1px solid var(--border);
+      box-shadow: 0 -4px 24px rgba(180, 150, 180, .13);
+      padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .bottom-nav-inner {
+      display: flex;
+      gap: 2px;
+      max-width: 760px;
+      margin: 0 auto
+    }
+
+    .tab {
+      flex: 1;
+      min-width: 0;
+      padding: 8px 2px;
+      border-radius: 12px;
+      border: none;
+      background: transparent;
+      font-family: inherit;
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--text-light);
+      cursor: pointer;
+      transition: .2s;
+      white-space: nowrap;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px
+    }
+
+    .tab .ti {
+      font-size: 18px;
+      line-height: 1
+    }
+
+    .tab.active {
+      background: linear-gradient(135deg, var(--pink-soft), var(--purple-soft));
+      color: var(--text)
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 18px;
+      padding: 16px 18px;
+      margin-bottom: 14px;
+      box-shadow: var(--shadow)
+    }
+
+    .card-title {
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .7px;
+      color: var(--text-light);
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center
+    }
+
+    .focus-card {
+      background: linear-gradient(135deg, #fff0f6 0%, #efe7ff 100%);
+      border-radius: 20px;
+      padding: 18px 20px;
+      margin-bottom: 14px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow)
+    }
+
+    .focus-card::before {
+      content: '';
+      position: absolute;
+      top: -50px;
+      right: -50px;
+      width: 150px;
+      height: 150px;
+      background: radial-gradient(circle, rgba(255, 255, 255, .75), transparent 70%);
+      border-radius: 50%
+    }
+
+    .fw {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: #b07c9c;
+      margin-bottom: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center
+    }
+
+    .ft {
+      font-size: 21px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+      position: relative
+    }
+
+    .fd {
+      font-size: 13px;
+      color: #8a6e85;
+      position: relative
+    }
+
+    button {
+      font-family: inherit
+    }
+
+    .btn {
+      border: none;
+      border-radius: 12px;
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: .15s
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--pink), var(--purple));
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(200, 140, 200, .35)
+    }
+
+    .btn-primary:active {
+      transform: scale(.97)
+    }
+
+    .btn-ghost {
+      background: var(--pink-soft);
+      color: #a5668e
+    }
+
+    .btn-ghost:active {
+      background: #f9cfe0
+    }
+
+    .btn-mini {
+      padding: 6px 10px;
+      font-size: 12px;
+      border-radius: 9px
+    }
+
+    input,
+    textarea,
+    select {
+      font-family: inherit;
+      font-size: 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 11px;
+      padding: 9px 12px;
+      background: #fdfbfc;
+      color: var(--text);
+      outline: none;
+      width: 100%;
+      transition: .15s
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      border-color: var(--pink);
+      background: #fff
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 60px
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+      align-items: center
+    }
+
+    .task {
+      background: #fff;
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 14px;
+      margin-bottom: 9px;
+      transition: .2s;
+      position: relative;
+      overflow: hidden
+    }
+
+    .task.done {
+      background: #f3fbf7;
+      border-color: #cdeadd
+    }
+
+    .task.failed {
+      background: #fdf3f3;
+      border-color: #f1d4d4;
+      opacity: .85
+    }
+
+    .task.pending {
+      border-left: 4px solid var(--pink)
+    }
+
+    .task.done::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: var(--ok)
+    }
+
+    .task.failed::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: var(--fail)
+    }
+
+    .t-head {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start
+    }
+
+    .t-check {
+      flex-shrink: 0;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2px solid var(--pink);
+      background: #fff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      color: var(--pink);
+      transition: .15s;
+      padding: 0;
+      line-height: 1
+    }
+
+    .t-check:hover {
+      background: var(--pink-soft)
+    }
+
+    .t-check.done {
+      background: var(--ok);
+      border-color: var(--ok);
+      color: #fff
+    }
+
+    .t-check.failed {
+      background: var(--fail);
+      border-color: var(--fail);
+      color: #fff;
+      cursor: not-allowed
+    }
+
+    .t-info {
+      flex: 1;
+      min-width: 0
+    }
+
+    .t-name {
+      font-weight: 600;
+      font-size: 14.5px;
+      line-height: 1.35
+    }
+
+    .task.done .t-name {
+      color: #4e8a72
+    }
+
+    .task.failed .t-name {
+      color: #a86d6d;
+      text-decoration: line-through;
+      text-decoration-color: #d49a9a
+    }
+
+    .t-meta {
+      font-size: 12px;
+      color: var(--text-light);
+      margin-top: 3px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px
+    }
+
+    .t-badge {
+      display: inline-block;
+      background: var(--purple-soft);
+      color: #7a6ba8;
+      border-radius: 6px;
+      padding: 1px 7px;
+      font-size: 11px;
+      font-weight: 600
+    }
+
+    .t-badge.time {
+      background: var(--mint-soft);
+      color: #4a8b7e
+    }
+
+    .t-controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-top: 9px
+    }
+
+    .t-controls input {
+      font-size: 12.5px;
+      padding: 7px 9px
+    }
+
+    .t-controls .full {
+      grid-column: 1/-1
+    }
+
+    .t-link {
+      background: none;
+      border: none;
+      color: #a17bb8;
+      font-size: 12px;
+      cursor: pointer;
+      padding: 2px 0;
+      font-weight: 600
+    }
+
+    .t-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 6px
+    }
+
+    .datebar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      background: #fff;
+      border-radius: 14px;
+      padding: 10px 12px;
+      margin-bottom: 14px;
+      box-shadow: var(--shadow)
+    }
+
+    .datebar input[type=date] {
+      flex: 1;
+      border: none;
+      background: transparent;
+      padding: 0;
+      font-weight: 600;
+      font-size: 15px
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 6px
+    }
+
+    .stat {
+      background: #faf6fb;
+      border-radius: 12px;
+      padding: 10px;
+      text-align: center
+    }
+
+    .stat .n {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text)
+    }
+
+    .stat.ok .n {
+      color: var(--ok)
+    }
+
+    .stat.fail .n {
+      color: var(--fail)
+    }
+
+    .stat .l {
+      font-size: 11px;
+      color: var(--text-light);
+      margin-top: 2px
+    }
+
+    .note {
+      background: #fff;
+      border-radius: 16px;
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: var(--shadow)
+    }
+
+    .note-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 8px
+    }
+
+    .note-time {
+      font-size: 11.5px;
+      color: var(--text-light);
+      font-weight: 600
+    }
+
+    .note-link {
+      font-size: 11px;
+      background: var(--pink-soft);
+      color: #a5668e;
+      padding: 3px 8px;
+      border-radius: 7px;
+      font-weight: 600
+    }
+
+    .note-text {
+      font-size: 14px;
+      white-space: pre-wrap;
+      word-wrap: break-word
+    }
+
+    .note-photos {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 9px
+    }
+
+    .note-photos img {
+      width: 76px;
+      height: 76px;
+      object-fit: cover;
+      border-radius: 10px;
+      cursor: pointer
+    }
+
+    .del {
+      background: none;
+      border: none;
+      color: #c9a8b5;
+      font-size: 16px;
+      cursor: pointer;
+      padding: 0 4px
+    }
+
+    .photo-up {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px
+    }
+
+    .photo-prev {
+      position: relative
+    }
+
+    .photo-prev img,
+    .photo-prev video {
+      width: 70px;
+      height: 70px;
+      object-fit: cover;
+      border-radius: 10px
+    }
+
+    .photo-prev button {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #e88a8a;
+      color: #fff;
+      border: none;
+      font-size: 12px;
+      cursor: pointer;
+      line-height: 1
+    }
+
+    .up-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--pink-soft);
+      color: #a5668e;
+      padding: 9px 14px;
+      border-radius: 11px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer
+    }
+
+    .up-label input {
+      display: none
+    }
+
+    .ach {
+      background: linear-gradient(135deg, #fff9f0, #fef4fa);
+      border-radius: 16px;
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: var(--shadow)
+    }
+
+    .ach-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      display: flex;
+      gap: 8px;
+      align-items: center
+    }
+
+    .ach-date {
+      font-size: 12px;
+      color: var(--text-light)
+    }
+
+    .ach-desc {
+      font-size: 13px;
+      margin-top: 8px;
+      color: var(--text);
+      white-space: pre-wrap;
+    }
+
+    .ach img,
+    .ach video {
+      width: 100%;
+      max-height: 300px;
+      object-fit: cover;
+      border-radius: 12px;
+      margin-top: 10px;
+    }
+
+    .ritual {
+      background: #fff;
+      border-radius: 16px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+      box-shadow: var(--shadow)
+    }
+
+    .ritual-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px
+    }
+
+    .ritual-name {
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      gap: 8px;
+      align-items: center
+    }
+
+    .period {
+      font-size: 11px;
+      background: var(--mint-soft);
+      color: #4a8b7e;
+      padding: 3px 8px;
+      border-radius: 7px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px
+    }
+
+    .step {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid #f7f0f5
+    }
+
+    .step:last-child {
+      border-bottom: none
+    }
+
+    .step-check {
+      width: 24px;
+      height: 24px;
+      border-radius: 8px;
+      border: 2px solid var(--purple);
+      background: #fff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 14px;
+      flex-shrink: 0;
+      padding: 0;
+      transition: .15s
+    }
+
+    .step-check.on {
+      background: var(--purple);
+      border-color: var(--purple)
+    }
+
+    .step-text {
+      font-size: 14px;
+      flex: 1
+    }
+
+    .step.on .step-text {
+      color: var(--text-light);
+      text-decoration: line-through
+    }
+
+    .add-form {
+      background: #fbf7fd;
+      border: 1.5px dashed #e0d3ec;
+      border-radius: 14px;
+      padding: 12px;
+      margin-top: 8px
+    }
+
+    .add-form .row {
+      margin-bottom: 8px
+    }
+
+    .hint {
+      font-size: 12px;
+      color: var(--text-light);
+      margin-top: 6px;
+      line-height: 1.4
+    }
+
+    .empty {
+      text-align: center;
+      padding: 34px 20px;
+      color: var(--text-light)
+    }
+
+    .empty .e {
+      font-size: 42px;
+      margin-bottom: 10px;
+      opacity: .7
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(70, 50, 70, .55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 100;
+      backdrop-filter: blur(4px)
+    }
+
+    .modal.show {
+      display: flex
+    }
+
+    .modal-inner {
+      background: #fff;
+      border-radius: 20px;
+      padding: 22px;
+      max-width: 460px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto
+    }
+
+    .modal-inner h3 {
+      font-size: 17px;
+      margin-bottom: 14px
+    }
+
+    #lightbox {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .92);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: 20px;
+      cursor: zoom-out
+    }
+
+    #lightbox.show {
+      display: flex
+    }
+
+    #lightbox img {
+      max-width: 100%;
+      max-height: 100%;
+      border-radius: 8px
+    }
+
+    .toast {
+      position: fixed;
+      bottom: calc(110px + env(safe-area-inset-bottom, 0px));
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #463a49;
+      color: #fff;
+      padding: 11px 20px;
+      border-radius: 12px;
+      font-size: 13.5px;
+      font-weight: 600;
+      transition: .3s;
+      z-index: 300;
+      opacity: 0;
+      pointer-events: none;
+      white-space: nowrap
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1
+    }
+
+    code {
+      background: #f5eefa;
+      color: #7a6ba8;
+      padding: 2px 6px;
+      border-radius: 5px;
+      font-size: 12.5px
+    }
+
+    .prev-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 6px 10px;
+      background: #faf7fc;
+      border-radius: 8px;
+      margin-bottom: 5px;
+      font-size: 12.5px
+    }
+
+    .prev-item b {
+      color: #7a6ba8
+    }
+
+    .prev-focus {
+      background: #eaf7f1;
+      color: #3f7d6b;
+      border-radius: 8px;
+      padding: 6px 10px;
+      margin-bottom: 5px;
+      font-size: 12.5px;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px
+    }
+
+    .prev-focus b {
+      color: #3f7d6b
+    }
+
+    /* Avatar edit */
+    .avatar-edit {
+      width: 92px;
+      height: 92px;
+      border-radius: 50%;
+      margin: 0 auto;
+      background: linear-gradient(135deg, var(--pink), var(--purple));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 46px;
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(200, 150, 200, .4);
+      overflow: hidden;
+      transition: .15s
+    }
+
+    .avatar-edit:hover {
+      transform: scale(1.03)
+    }
+
+    .avatar-edit img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover
+    }
+
+    .field-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #8d8091;
+      display: block;
+      margin-bottom: 4px
+    }
+  </style>
 </head>
+
 <body>
-<div class="app">
-  <header class="header">
-    <div class="header-info">
-      <h1 id="childName">Малыш</h1>
-      <div class="sub" id="headerSub">Загрузка…</div>
-    </div>
-    <div class="avatar" id="avatarBtn" title="Настройки">
-      <span id="avatarEmoji">👶</span>
-      <img id="avatarImg" alt="" style="display:none">
-    </div>
-  </header>
+  <div class="app">
+    <header class="header">
+      <div class="header-info">
+        <h1 id="childName">Малыш</h1>
+        <div class="sub" id="headerSub">Загрузка…</div>
+      </div>
+      <div class="avatar" id="avatarBtn" title="Настройки">
+        <span id="avatarEmoji">👶</span>
+        <img id="avatarImg" alt="" style="display:none">
+      </div>
+    </header>
 
-  <main id="main"></main>
-</div>
-
-<!-- нижняя навигация -->
-<nav class="bottom-nav">
-  <div class="bottom-nav-inner" id="tabs">
-    <button class="tab active" data-tab="tasks"><span class="ti">📋</span>Занятия</button>
-    <button class="tab" data-tab="notes"><span class="ti">📝</span>Заметки</button>
-    <button class="tab" data-tab="achieve"><span class="ti">🏆</span>Достижения</button>
-    <button class="tab" data-tab="rituals"><span class="ti">🌙</span>Ритуалы</button>
-    <button class="tab" data-tab="food"><span class="ti">🍼</span>Прикорм</button>
+    <main id="main"></main>
   </div>
-</nav>
 
-<!-- модалка: настройки -->
-<div class="modal" id="settingsModal">
-  <div class="modal-inner">
-    <h3 id="settingsTitle">Настройки</h3>
-
-    <div class="avatar-edit" id="avatarEdit" title="Нажмите, чтобы выбрать фото">
-      <span id="avatarPreviewEmoji">👶</span>
-      <img id="avatarPreview" style="display:none" alt="">
+  <!-- нижняя навигация -->
+  <nav class="bottom-nav">
+    <div class="bottom-nav-inner" id="tabs">
+      <button class="tab active" data-tab="tasks"><span class="ti">📋</span>Занятия</button>
+      <button class="tab" data-tab="notes"><span class="ti">📝</span>Заметки</button>
+      <button class="tab" data-tab="achieve"><span class="ti">🏆</span>Достижения</button>
+      <button class="tab" data-tab="rituals"><span class="ti">🌙</span>Ритуалы</button>
+      <button class="tab" data-tab="food"><span class="ti">🍼</span>Прикорм</button>
     </div>
-    <input type="file" id="avatarFile" accept="image/*" style="display:none" onchange="App.loadAvatar(this)">
-    <div class="row" style="justify-content:center;gap:8px;margin:10px 0 16px">
-      <button class="btn btn-mini btn-ghost" onclick="document.getElementById('avatarFile').click()">📷 Фото</button>
-      <button class="btn btn-mini btn-ghost" onclick="App.clearAvatar()">🗑 Убрать</button>
-    </div>
+  </nav>
 
-    <label class="field-label">Имя ребёнка</label>
-    <input type="text" id="setName" placeholder="Например: Алиса" style="margin-bottom:14px">
+  <!-- модалка: настройки -->
+  <div class="modal" id="settingsModal">
+    <div class="modal-inner">
+      <h3 id="settingsTitle">Настройки</h3>
 
-    <label class="field-label">Имя мамы</label>
-    <input type="text" id="setMother" placeholder="Например: Оля" style="margin-bottom:14px">
+      <div class="avatar-edit" id="avatarEdit" title="Нажмите, чтобы выбрать фото">
+        <span id="avatarPreviewEmoji">👶</span>
+        <img id="avatarPreview" style="display:none" alt="">
+      </div>
+      <input type="file" id="avatarFile" accept="image/*" style="display:none" onchange="App.loadAvatar(this)">
+      <div class="row" style="justify-content:center;gap:8px;margin:10px 0 16px">
+        <button class="btn btn-mini btn-ghost" onclick="document.getElementById('avatarFile').click()">📷 Фото</button>
+        <button class="btn btn-mini btn-ghost" onclick="App.clearAvatar()">🗑 Убрать</button>
+      </div>
 
-    <label class="field-label">Дата рождения</label>
-    <input type="date" id="setBirth" style="margin-bottom:14px">
-    <p class="hint">От даты рождения рассчитывается номер недели.</p>
+      <label class="field-label">Имя ребёнка</label>
+      <input type="text" id="setName" placeholder="Например: Алиса" style="margin-bottom:14px">
 
-    <div class="row" style="justify-content:space-between;margin-top:16px">
-      <button class="btn btn-mini btn-ghost" onclick="App.resetAll()">🗑 Сбросить всё</button>
-      <button class="btn btn-primary" onclick="App.saveSettings()">Сохранить</button>
-    </div>
-  </div>
-</div>
+      <label class="field-label">Имя мамы</label>
+      <input type="text" id="setMother" placeholder="Например: Оля" style="margin-bottom:14px">
 
-<!-- модалка: обновление -->
-<div class="modal" id="updateModal">
-  <div class="modal-inner">
-    <h3>🚀 Доступно обновление!</h3>
-    <p style="font-size:13px;color:#8d8091;margin-bottom:10px">
-      Текущая версия: <b id="currentTag"></b><br>
-      Новая версия: <b id="newTag" style="color:var(--ok)"></b>
-    </p>
-    <div id="updateNotes" style="background:#faf7fc;padding:10px;border-radius:10px;font-size:13px;margin-bottom:15px;max-height:150px;overflow-y:auto;white-space:pre-wrap;line-height:1.4;color:#6d5c74"></div>
-    <div class="row" style="justify-content:space-between;margin-top:16px">
-      <button class="btn btn-mini btn-ghost" onclick="document.getElementById('updateModal').classList.remove('show')">Позже</button>
-      <a id="updateLink" href="#" target="_blank" class="btn btn-primary" style="text-decoration:none;text-align:center;display:inline-block">Скачать APK</a>
+      <label class="field-label">Дата рождения</label>
+      <input type="date" id="setBirth" style="margin-bottom:14px">
+      <p class="hint">От даты рождения рассчитывается номер недели.</p>
+
+      <div class="row" style="justify-content:space-between;margin-top:16px">
+        <button class="btn btn-mini btn-ghost" onclick="App.resetAll()">🗑 Сбросить всё</button>
+        <button class="btn btn-primary" onclick="App.saveSettings()">Сохранить</button>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- модалка: импорт -->
-<div class="modal" id="importModal">
-  <div class="modal-inner">
-    <h3>📥 Импорт плана из txt</h3>
-    <p class="hint" style="margin-bottom:10px">
-      Задача: <code>ДД.ММ.ГГГГ: Название (Цель)</code><br>
-      Фокус: строка <code>Фокус: текст</code> — задаёт фокус для последующих дат.
-    </p>
-    <label class="up-label">📄 Выбрать .txt файл
-      <input type="file" accept=".txt,text/plain" onchange="App.loadImportFile(this)">
-    </label>
-    <div class="hint" style="margin-top:12px;margin-bottom:6px">…или вставьте текст вручную:</div>
-    <textarea id="importText" rows="8" placeholder="Фокус: Развитие слуха и гуления
+  <!-- модалка: обновление -->
+  <div class="modal" id="updateModal">
+    <div class="modal-inner">
+      <h3>🚀 Доступно обновление!</h3>
+      <p style="font-size:13px;color:#8d8091;margin-bottom:10px">
+        Текущая версия: <b id="currentTag"></b><br>
+        Новая версия: <b id="newTag" style="color:var(--ok)"></b>
+      </p>
+      <div id="updateNotes"
+        style="background:#faf7fc;padding:10px;border-radius:10px;font-size:13px;margin-bottom:15px;max-height:150px;overflow-y:auto;white-space:pre-wrap;line-height:1.4;color:#6d5c74">
+      </div>
+      <div class="row" style="justify-content:space-between;margin-top:16px">
+        <button class="btn btn-mini btn-ghost"
+          onclick="document.getElementById('updateModal').classList.remove('show')">Позже</button>
+        <a id="updateLink" href="#" target="_blank" class="btn btn-primary"
+          style="text-decoration:none;text-align:center;display:inline-block">Скачать APK</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- модалка: импорт -->
+  <div class="modal" id="importModal">
+    <div class="modal-inner">
+      <h3>📥 Импорт плана из txt</h3>
+      <p class="hint" style="margin-bottom:10px">
+        Задача: <code>ДД.ММ.ГГГГ: Название (Цель)</code><br>
+        Фокус: строка <code>Фокус: текст</code> — задаёт фокус для последующих дат.
+      </p>
+      <label class="up-label">📄 Выбрать .txt файл
+        <input type="file" accept=".txt,text/plain" onchange="App.loadImportFile(this)">
+      </label>
+      <div class="hint" style="margin-top:12px;margin-bottom:6px">…или вставьте текст вручную:</div>
+      <textarea id="importText" rows="8" placeholder="Фокус: Развитие слуха и гуления
 12.05.2024: Выкладывание на живот (5 мин)
 12.05.2024: Массаж всего тела (10 мин)
 
 Фокус: Развитие зрения
 19.05.2024: Слежение за игрушкой (10 раз)" oninput="App.previewImport()"></textarea>
-    <div id="importPreview" style="margin-top:10px"></div>
-    <label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;cursor:pointer;color:#8d8091">
-      <input type="checkbox" id="importClearFocus" style="width:auto">
-      <span>Очистить старые фокусы недель перед импортом</span>
-    </label>
-    <div class="row" style="justify-content:space-between;margin-top:14px;flex-wrap:wrap">
-      <button class="btn btn-mini btn-ghost" onclick="App.closeImport()">Отмена</button>
-      <div style="display:flex;gap:6px">
-        <button class="btn btn-mini btn-ghost" onclick="App.doImport('add')">➕ Добавить</button>
-        <button class="btn btn-mini btn-primary" onclick="App.doImport('replace')">🔄 Заменить дни</button>
+      <div id="importPreview" style="margin-top:10px"></div>
+      <label
+        style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;cursor:pointer;color:#8d8091">
+        <input type="checkbox" id="importClearFocus" style="width:auto">
+        <span>Очистить старые фокусы недель перед импортом</span>
+      </label>
+      <div class="row" style="justify-content:space-between;margin-top:14px;flex-wrap:wrap">
+        <button class="btn btn-mini btn-ghost" onclick="App.closeImport()">Отмена</button>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-mini btn-ghost" onclick="App.doImport('add')">➕ Добавить</button>
+          <button class="btn btn-mini btn-primary" onclick="App.doImport('replace')">🔄 Заменить дни</button>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-<div id="lightbox" onclick="this.classList.remove('show')"><img id="lbImg" src=""></div>
-<div class="toast" id="toast"></div>
+  <div id="lightbox" onclick="this.classList.remove('show')"><img id="lbImg" src=""></div>
+  <div class="toast" id="toast"></div>
 
-<script>
-/* ============ НАСТРОЙКИ ОБНОВЛЕНИЙ ============ */
-const APP_VERSION = '1.0.3';
-const BUILD_TAG = 'local';
-const GITHUB_REPO = 'denispan88-svg/BabyDiary';
+  <script>
+    /* ============ НАСТРОЙКИ ОБНОВЛЕНИЙ ============ */
+    const APP_VERSION = '1.0.1';
+    const BUILD_TAG = 'local';
+    const GITHUB_REPO = 'denispan88-svg/BabyDiary';
 
-/* ============ УТИЛИТЫ ============ */
-const $  = (s,r=document)=>r.querySelector(s);
-const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
-const uid = ()=>Math.random().toString(36).slice(2,9);
-const todayStr = (d=new Date())=>{const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),dd=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${dd}`};
-const addDays = (s,n)=>{const d=new Date(s+'T00:00:00');d.setDate(d.getDate()+n);return todayStr(d)};
-const fmtDate = (s)=>{const d=new Date(s+'T00:00:00');return d.toLocaleDateString('ru-RU',{day:'numeric',month:'long',weekday:'short'})};
-const fmtDMY = (s)=>{const [y,m,d]=s.split('-');return d+'.'+m+'.'+y};
-const esc = (s)=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200)}
-function openImg(src){$('#lbImg').src=src;$('#lightbox').classList.add('show')}
+    /* ============ УТИЛИТЫ ============ */
+    const $ = (s, r = document) => r.querySelector(s);
+    const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+    const uid = () => Math.random().toString(36).slice(2, 9);
+    const todayStr = (d = new Date()) => { const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), dd = String(d.getDate()).padStart(2, '0'); return `${y}-${m}-${dd}` };
+    const addDays = (s, n) => { const d = new Date(s + 'T00:00:00'); d.setDate(d.getDate() + n); return todayStr(d) };
+    const fmtDate = (s) => { const d = new Date(s + 'T00:00:00'); return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'short' }) };
+    const fmtDMY = (s) => { const [y, m, d] = s.split('-'); return d + '.' + m + '.' + y };
+    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 2200) }
+    function openImg(src) { $('#lbImg').src = src; $('#lightbox').classList.add('show') }
 
-/* ============ РАБОТА С ФАЙЛАМИ (NATIVE & WEB) ============ */
-function getSrc(uri) {
-  if (!uri) return '';
-  if (uri.startsWith('data:')) return uri;
-  if (window.Capacitor && Capacitor.convertFileSrc) {
-    return Capacitor.convertFileSrc(uri);
-  }
-  return uri;
-}
+    /* ============ РАБОТА С ФАЙЛАМИ (ТОЛЬКО ДЛЯ ПРИЛОЖЕНИЯ) ============ */
+    // Получить правильный URL для отображения картинки/видео из файловой системы
+    function getSrc(uri) {
+      if (!uri) return '';
+      return Capacitor.convertFileSrc(uri);
+    }
 
-function compressImage(file,max=900){return new Promise(res=>{
-  const fr=new FileReader();
-  fr.onload=e=>{const img=new Image();img.onload=()=>{
-    const cv=document.createElement('canvas');let{width:w,height:h}=img;
-    if(w>h&&w>max){h*=max/w;w=max}else if(h>max){w*=max/h;h=max}
-    cv.width=w;cv.height=h;cv.getContext('2d').drawImage(img,0,0,w,h);
-    res(cv.toDataURL('image/jpeg',.72));
-  };img.src=e.target.result};
-  fr.readAsDataURL(file);
-})}
-
-async function saveMediaFile(file, isVideo) {
-  if (window.Capacitor && Capacitor.Plugins.Filesystem) {
-    let base64Data = '';
-    if (isVideo) {
-      base64Data = await new Promise(res => {
+    // Сжатие изображений перед сохранением
+    function compressImage(file, max = 900) {
+      return new Promise(res => {
         const fr = new FileReader();
-        fr.onload = e => res(e.target.result);
+        fr.onload = e => {
+          const img = new Image(); img.onload = () => {
+            const cv = document.createElement('canvas'); let { width: w, height: h } = img;
+            if (w > h && w > max) { h *= max / w; w = max } else if (h > max) { w *= max / h; h = max }
+            cv.width = w; cv.height = h; cv.getContext('2d').drawImage(img, 0, 0, w, h);
+            res(cv.toDataURL('image/jpeg', .72));
+          }; img.src = e.target.result
+        };
         fr.readAsDataURL(file);
-      });
-    } else {
-      base64Data = await compressImage(file);
-    }
-    
-    const ext = isVideo ? 'mp4' : 'jpg';
-    const fileName = 'media_' + Date.now() + '_' + Math.floor(Math.random()*1000) + '.' + ext;
-    
-    try {
-      const result = await Capacitor.Plugins.Filesystem.writeFile({
-        path: fileName,
-        data: base64Data.split(',')[1],
-        directory: 'DATA',
-        encoding: 'base64'
-      });
-      return result.uri;
-    } catch(e) {
-      alert('Ошибка сохранения файла: ' + e.message);
-      return null;
-    }
-  } else {
-    if (isVideo) {
-      return await new Promise(res => {
-        const fr = new FileReader();
-        fr.onload = e => res(e.target.result);
-        fr.readAsDataURL(file);
-      });
-    } else {
-      return await compressImage(file);
-    }
-  }
-}
-
-/* ============ ПРОВЕРКА ОБНОВЛЕНИЙ ============ */
-async function checkForUpdates(force = false) {
-  if (BUILD_TAG === 'local') return;
-  const lastCheck = localStorage.getItem('ld_last_update_check');
-  const now = Date.now();
-  if (!force && lastCheck && (now - lastCheck < 12 * 60 * 60 * 1000)) return;
-  localStorage.setItem('ld_last_update_check', now);
-  
-  try {
-    const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest?t=${Date.now()}`, {
-      headers: { 'Accept': 'application/vnd.github.v3+json' }
-    });
-    if (!res.ok) return;
-    const data = await res.json();
-    if (data.tag_name !== BUILD_TAG) {
-      showUpdateModal(data.tag_name, data.body, data.assets);
-    }
-  } catch (e) { console.log('Update check failed:', e); }
-}
-
-function showUpdateModal(newTag, notes, assets) {
-  document.getElementById('currentTag').textContent = BUILD_TAG;
-  document.getElementById('newTag').textContent = newTag;
-  document.getElementById('updateNotes').textContent = notes || 'Нет описания изменений.';
-  let downloadUrl = `https://github.com/${GITHUB_REPO}/releases/latest`;
-  if (assets && assets.length > 0) {
-    const apkAsset = assets.find(a => a.name.endsWith('.apk'));
-    if (apkAsset) downloadUrl = apkAsset.browser_download_url;
-  }
-  document.getElementById('updateLink').href = downloadUrl;
-  document.getElementById('updateModal').classList.add('show');
-}
-
-/* ============ СОСТОЯНИЕ ============ */
-const LS={name:'ld_name',mother:'ld_mother',birth:'ld_birth',avatar:'ld_avatar',
-  tasks:'ld_tasks',notes:'ld_notes',ach:'ld_ach',rituals:'ld_rituals',
-  weekFocus:'ld_weekfocus',onboarded:'ld_onboarded'};
-
-function safeParse(key,fallback){
-  try{
-    const raw=localStorage.getItem(key);
-    if(!raw) return fallback;
-    const v=JSON.parse(raw);
-    return v==null?fallback:v;
-  }catch(e){return fallback}
-}
-
-const state={
-  name: localStorage.getItem(LS.name)||'Малыш',
-  motherName: localStorage.getItem(LS.mother)||'',
-  birth: localStorage.getItem(LS.birth)||'',
-  avatar: localStorage.getItem(LS.avatar)||'',
-  tasks: safeParse(LS.tasks,{}),
-  notes: safeParse(LS.notes,[]),
-  ach: safeParse(LS.ach,[]),
-  rituals: safeParse(LS.rituals,[]),
-  weekFocus: safeParse(LS.weekFocus,{}),
-  selectedDate: todayStr(),
-  activeTab: 'tasks',
-  addTaskOpen: false,
-  pendingPhotos: [],
-  _achPhoto: '',
-  _achVideo: null,
-  _newAvatar: undefined
-};
-
-if(typeof state.tasks!=='object'||state.tasks===null||Array.isArray(state.tasks)) state.tasks={};
-if(!Array.isArray(state.notes)) state.notes=[];
-if(!Array.isArray(state.ach)) state.ach=[];
-if(!Array.isArray(state.rituals)) state.rituals=[];
-if(typeof state.weekFocus!=='object'||state.weekFocus===null||Array.isArray(state.weekFocus)) state.weekFocus={};
-
-function save(k){
-  const v=state[k];
-  if(typeof v==='string') localStorage.setItem(LS[k], v);
-  else localStorage.setItem(LS[k], JSON.stringify(v));
-}
-
-/* ============ НЕДЕЛЯ ============ */
-function getWeekNum(dateStr){
-  if(!state.birth) return 1;
-  const b=new Date(state.birth+'T00:00:00');
-  const d=new Date(dateStr+'T00:00:00');
-  const diff=Math.floor((d-b)/86400000);
-  return Math.max(1,Math.floor(diff/7)+1);
-}
-function getMonday(dateStr){
-  const d=new Date(dateStr+'T00:00:00');
-  const dow=d.getDay();
-  const diff=(dow===0)?-6:(1-dow);
-  d.setDate(d.getDate()+diff);
-  return todayStr(d);
-}
-
-function getFocus(dateStr){
-  const wn=getWeekNum(dateStr);
-  const mk=getMonday(dateStr);
-  const imported=state.weekFocus[mk];
-  if(imported && imported.trim()){
-    return {week:wn, t:imported, e:'📥', d:'Фокус недели из импорта'};
-  }
-  return {week:wn, t:'Не задан', e:'📅', d:'Нажмите ✏️ чтобы указать фокус'};
-}
-
-function ensureTasksFor(date){
-  if(!state.tasks[date]) {
-    state.tasks[date] = [];
-    save('tasks');
-  }
-}
-
-function finalizePastTasks(){
-  const today=todayStr();
-  let changed=false;
-  for(const date in state.tasks){
-    if(date<today){
-      state.tasks[date].forEach(t=>{
-        if(!t.status){t.status='failed';changed=true}
-      });
-    }
-  }
-  if(changed) save('tasks');
-}
-
-/* ============ ПАРСЕР TXT ============ */
-function parsePlanText(text){
-  const map={}, weekFocus={}, errors=[];
-  const lines=String(text||'').split(/\r?\n/);
-  let currentFocus=null;
-  const focusRe=/^\s*фокус(?:\s+недели)?\s*[:\-—–]\s*(.+?)\s*$/i;
-  const dateRe=/^\s*(\d{1,2})\.(\d{1,2})\.(\d{2,4})\s*[:\-—–]\s*(.+?)\s*$/;
-
-  lines.forEach((line,idx)=>{
-    const raw=line.trim();
-    if(!raw || raw.startsWith('#')) return;
-
-    const fm=raw.match(focusRe);
-    if(fm){
-      currentFocus=fm[1].trim()||null;
-      return;
+      })
     }
 
-    const m=raw.match(dateRe);
-    if(!m){ errors.push({line:idx+1, text:raw}); return; }
-    let [,d,mo,y,rest]=m;
-    if(y.length===2) y='20'+y;
-    const dd=String(+d).padStart(2,'0');
-    const mm=String(+mo).padStart(2,'0');
-    if(+dd<1||+dd>31||+mm<1||+mm>12){ errors.push({line:idx+1, text:raw}); return; }
-    const date=`${y}-${mm}-${dd}`;
-    let name=rest.trim(), target='—';
-    const pm=rest.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
-    if(pm){ name=pm[1].trim(); target=pm[2].trim(); }
-    if(!name){ errors.push({line:idx+1, text:raw}); return; }
-    if(!map[date]) map[date]=[];
-    map[date].push({name, target, type:/мин|час/i.test(target)?'time':'count'});
+    // Сохранение медиа напрямую в файловую систему Android
+    async function saveMediaFile(file, isVideo) {
+      let base64Data = '';
 
-    if(currentFocus) weekFocus[getMonday(date)]=currentFocus;
-  });
-
-  return {map, weekFocus, errors};
-}
-
-/* ============ HEADER ============ */
-function renderHeader(){
-  const w=getWeekNum(state.selectedDate);
-  const name=state.name||'Малыш';
-  $('#childName').textContent=name;
-  let sub=w+'-я неделя жизни';
-  if(state.motherName) sub+=' · мама '+state.motherName;
-  $('#headerSub').textContent=sub;
-
-  const img=$('#avatarImg'), emoji=$('#avatarEmoji');
-  if(state.avatar){
-    if(img.getAttribute('src')!==getSrc(state.avatar)) img.src=getSrc(state.avatar);
-    img.style.display='block';
-    emoji.style.display='none';
-  } else {
-    img.style.display='none';
-    emoji.style.display='block';
-  }
-}
-
-/* ============ ЗАНЯТИЯ ============ */
-function renderTasks(){
-  ensureTasksFor(state.selectedDate);
-  const date=state.selectedDate;
-  const focus=getFocus(date);
-  const tasks=state.tasks[date]||[];
-  const isPast=date<todayStr();
-  const done=tasks.filter(t=>t.status==='done').length;
-
-  let html = `
-    <div class="focus-card">
-      <div class="fw">Фокус ${focus.week}-й недели <button class="btn btn-mini btn-ghost" style="padding:2px 8px;" onclick="App.editFocus()">✏️</button></div>
-      <div class="ft">${focus.e} ${esc(focus.t)}</div>
-      <div class="fd">${esc(focus.d)}</div>
-    </div>
-
-    <div class="datebar">
-      <input type="date" value="${date}" onchange="App.changeDate(this.value)">
-      <button class="btn btn-mini btn-ghost" onclick="App.changeDate('${todayStr()}')">Сегодня</button>
-    </div>
-
-    <div class="card">
-      <div class="card-title"><span>Задачи дня · ${fmtDate(date)}</span><span>${done}/${tasks.length}</span></div>
-  `;
-
-  if(!tasks.length){
-    html += `<div class="empty"><div class="e">🌸</div>Пока нет задач на этот день</div>`;
-  }else{
-    tasks.forEach(t=>{ html += renderTaskItem(t,isPast); });
-  }
-
-  html += `
-      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-ghost" onclick="App.toggleAdd()">➕ Добавить задачу</button>
-        <button class="btn btn-primary" onclick="App.openImport()">📥 Импорт плана</button>
-      </div>
-      ${state.addTaskOpen ? renderAddTaskForm() : ''}
-    </div>
-  `;
-
-  const stats=getWeekStats(date);
-  html += `
-    <div class="card">
-      <div class="card-title">Статистика недели</div>
-      <div class="stats">
-        <div class="stat ok"><div class="n">${stats.done}</div><div class="l">выполнено</div></div>
-        <div class="stat fail"><div class="n">${stats.failed}</div><div class="l">пропущено</div></div>
-        <div class="stat"><div class="n">${stats.total?Math.round(stats.done/stats.total*100):0}%</div><div class="l">успех</div></div>
-      </div>
-      <p class="hint">Невыполненные задачи в конце дня автоматически получают минус.</p>
-    </div>
-  `;
-  return html;
-}
-
-function renderTaskItem(t,isPast){
-  const status=t.status||(isPast?'failed':'pending');
-  const cls=status==='done'?'done':status==='failed'?'failed':'pending';
-  const icon=status==='done'?'✓':status==='failed'?'✕':'';
-  const dis=status==='failed'?'disabled':'';
-  return `
-    <div class="task ${cls}">
-      <div class="t-head">
-        <button class="t-check ${status==='done'?'done':status==='failed'?'failed':''}" onclick="App.toggleDone('${t.id}')" ${status==='failed'?'disabled':''}>${icon}</button>
-        <div class="t-info">
-          <div class="t-name">${esc(t.name)}</div>
-          <div class="t-meta"><span class="t-badge ${t.type==='time'?'time':''}">${t.type==='time'?'⏱':'🔁'} ${esc(t.target)}</span></div>
-        </div>
-      </div>
-      <div class="t-controls">
-        <input type="text" placeholder="Повторений" value="${esc(t.reps)}" onchange="App.updTask('${t.id}','reps',this.value)" ${dis}>
-        <input type="text" placeholder="Длительность (напр. 5 мин)" value="${esc(t.time)}" onchange="App.updTask('${t.id}','time',this.value)" ${dis}>
-        <input class="full" type="text" placeholder="Замечание" value="${esc(t.note)}" onchange="App.updTask('${t.id}','note',this.value)" ${dis}>
-      </div>
-      <div class="t-actions">
-        <button class="t-link" onclick="App.noteFromTask('${t.id}')">📝 Записать наблюдение</button>
-        <button class="del" onclick="App.delTask('${t.id}')">✕</button>
-      </div>
-    </div>
-  `;
-}
-
-function renderAddTaskForm(){
-  return `
-    <div class="add-form">
-      <div class="row"><input type="text" id="newTaskName" placeholder="Название задачи"></div>
-      <div class="row"><input type="text" id="newTaskTarget" placeholder="Цель (напр. 5 мин или 10 раз)"></div>
-      <div class="row" style="justify-content:flex-end">
-        <button class="btn btn-mini btn-ghost" onclick="App.toggleAdd()">Отмена</button>
-        <button class="btn btn-mini btn-primary" onclick="App.addTask()">Добавить</button>
-      </div>
-    </div>
-  `;
-}
-
-function getWeekStats(dateStr){
-  const w=getWeekNum(dateStr);
-  let done=0,failed=0,total=0;
-  for(const date in state.tasks){
-    if(getWeekNum(date)!==w) continue;
-    state.tasks[date].forEach(t=>{
-      total++;
-      if(t.status==='done') done++;
-      else if(t.status==='failed') failed++;
-    });
-  }
-  return {done,failed,total};
-}
-
-/* ============ ЗАМЕТКИ ============ */
-function renderNotes(){
-  let html = `
-    <div class="card">
-      <div class="card-title">Новая заметка / наблюдение</div>
-      <textarea id="noteText" placeholder="Что заметили?"></textarea>
-      <div class="row" style="margin-top:8px"><select id="noteLink"><option value="">— привязать к задаче (необязательно) —</option>${linkOptions()}</select></div>
-      <div class="row" style="margin-top:8px;align-items:flex-start">
-        <label class="up-label">📷 Фото<input type="file" accept="image/*" multiple onchange="App.addNotePhoto(this)"></label>
-        <div class="photo-up" id="notePhotoPreview"></div>
-      </div>
-      <div class="row" style="justify-content:flex-end;margin-top:10px">
-        <button class="btn btn-primary" onclick="App.saveNote()">Сохранить</button>
-      </div>
-    </div>
-    <div class="card"><div class="card-title">Все наблюдения · ${state.notes.length}</div>
-  `;
-
-  if(!state.notes.length){
-    html += `<div class="empty"><div class="e">📝</div>Пока нет заметок.</div>`;
-  }else{
-    [...state.notes].sort((a,b)=>b.ts-a.ts).forEach(n=>{
-      html += `
-        <div class="note">
-          <div class="note-head">
-            <div>
-              <div class="note-time">${new Date(n.ts).toLocaleString('ru-RU',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'})}</div>
-              ${n.taskName?`<div class="note-link" style="margin-top:4px;display:inline-block">📋 ${esc(n.taskName)}</div>`:''}
-            </div>
-            <button class="del" onclick="App.delNote('${n.id}')">✕</button>
-          </div>
-          <div class="note-text">${esc(n.text)}</div>
-      `;
-      if(n.photos && n.photos.length){
-        html += `<div class="note-photos">`;
-        n.photos.forEach(p=>{ html += `<img src="${getSrc(p)}" onclick="openImg(this.src)">`; });
-        html += `</div>`;
-      }
-      html += `</div>`;
-    });
-  }
-  html += `</div>`;
-  return html;
-}
-function linkOptions(){
-  let out='';
-  const today=todayStr();
-  const yest=addDays(today,-1);
-  [today,yest].forEach(d=>{
-    (state.tasks[d]||[]).forEach(t=>{
-      out += `<option value="${esc(t.name)}">${d===today?'Сегодня':'Вчера'} · ${esc(t.name)}</option>`;
-    });
-  });
-  return out;
-}
-
-/* ============ ДОСТИЖЕНИЯ ============ */
-function renderAch(){
-  const now=new Date();
-  const pad=n=>String(n).padStart(2,'0');
-  const nowStr = now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+'T'+pad(now.getHours())+':'+pad(now.getMinutes());
-
-  let html = `
-    <div class="card">
-      <div class="card-title">🏆 Новое достижение</div>
-      <input type="text" id="achTitle" placeholder="Заголовок (напр.: Первая улыбка)" style="margin-bottom:8px">
-      <input type="datetime-local" id="achDate" value="${nowStr}" style="margin-bottom:8px">
-      <textarea id="achDesc" placeholder="Описание (необязательно)" style="margin-bottom:8px;min-height:50px;"></textarea>
-      <div class="row" style="margin-bottom:8px; gap:8px; flex-wrap:wrap;">
-         <label class="up-label">📷 Фото<input type="file" accept="image/*" onchange="App.addAchPhoto(this)"></label>
-         <label class="up-label" style="background:var(--purple-soft);color:#7a6ba8;">🎥 Видео<input type="file" accept="video/*" onchange="App.addAchVideo(this)"></label>
-      </div>
-      <div class="photo-up" id="achPhotoPreview"></div>
-      <div class="row" style="justify-content:flex-end;margin-top:10px">
-        <button class="btn btn-primary" onclick="App.saveAch()">Добавить</button>
-      </div>
-    </div>
-    <div class="card"><div class="card-title">Все достижения · ${state.ach.length}</div>
-  `;
-
-  if(!state.ach.length){
-    html += `<div class="empty"><div class="e">🌟</div>Каждое «впервые» — победа!</div>`;
-  } else {
-    [...state.ach].sort((a,b)=>new Date(b.date)-new Date(a.date)).forEach(a=>{
-      const d=new Date(a.date);
-      html += `
-        <div class="ach">
-          <div class="row" style="justify-content:space-between">
-            <div>
-              <div class="ach-title">🎉 ${esc(a.title)}</div>
-              <div class="ach-date">${d.toLocaleString('ru-RU',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
-            </div>
-            <button class="del" onclick="App.delAch('${a.id}')">✕</button>
-          </div>
-          ${a.desc ? `<div class="ach-desc">${esc(a.desc)}</div>` : ''}
-          ${a.photo ? `<img src="${getSrc(a.photo)}" onclick="openImg(this.src)">` : ''}
-          ${a.video ? `<video src="${getSrc(a.video)}" controls></video>` : ''}
-        </div>
-      `;
-    });
-  }
-  html += `</div>`;
-  return html;
-}
-
-/* ============ РИТУАЛЫ ============ */
-function renderRituals(){
-  const today=todayStr();
-  let html='';
-  state.rituals.forEach(r=>{
-    const done=(r.completions && r.completions[today]) || {};
-    const doneCount=Object.values(done).filter(Boolean).length;
-    const total=r.steps.length;
-    const all=total>0 && doneCount===total;
-
-    html += `
-      <div class="ritual">
-        <div class="ritual-head">
-          <div class="ritual-name">${r.emoji||'🌙'} ${esc(r.name)}</div>
-          <div style="display:flex;gap:6px;align-items:center;">
-            <button class="btn btn-mini btn-ghost" onclick="App.checkAllRitual('${r.id}')">✅ Все</button>
-            <div class="period">${r.period==='daily'?'каждый день':r.period==='weekly'?'каждую неделю':'каждый месяц'}</div>
-          </div>
-        </div>
-    `;
-
-    r.steps.forEach(s=>{
-      const on=done[s.id];
-      html += `
-        <div class="step ${on?'on':''}">
-          <button class="step-check ${on?'on':''}" onclick="App.toggleStep('${r.id}','${s.id}')">${on?'✓':''}</button>
-          <div class="step-text">${esc(s.text)}</div>
-          <button class="del" onclick="App.delStep('${r.id}','${s.id}')">✕</button>
-        </div>
-      `;
-    });
-
-    html += `
-        <div class="row" style="justify-content:space-between;margin-top:10px">
-          <div style="font-size:12px;color:#8d8091">${all?'✅ Выполнено!':'Выполнено '+doneCount+' из '+total}</div>
-          <button class="del" onclick="App.delRitual('${r.id}')">Удалить</button>
-        </div>
-        <div class="row" style="margin-top:8px">
-          <input type="text" placeholder="Добавить шаг…" id="stepInput_${r.id}" onkeydown="if(event.key==='Enter')App.addStep('${r.id}')">
-          <button class="btn btn-mini btn-ghost" onclick="App.addStep('${r.id}')">+</button>
-        </div>
-      </div>
-    `;
-  });
-
-  html += `
-    <div class="card">
-      <div class="card-title">Создать ритуал</div>
-      <input type="text" id="ritName" placeholder="Название" style="margin-bottom:8px">
-      <select id="ritPeriod" style="margin-bottom:8px">
-        <option value="daily">Каждый день</option>
-        <option value="weekly">Каждую неделю</option>
-        <option value="monthly">Каждый месяц</option>
-      </select>
-      <button class="btn btn-primary" onclick="App.addRitual()">Создать</button>
-    </div>
-  `;
-  return html;
-}
-
-/* ============ ПРИКОРМ ============ */
-function renderFood(){
-  return `
-    <div class="card">
-      <div class="empty">
-        <div class="e">🍼</div>
-        <h3 style="font-size:18px;margin-bottom:8px;color:var(--text)">Прикорм</h3>
-        <p>Раздел в разработке 💛</p>
-      </div>
-    </div>
-  `;
-}
-
-/* ============ РЕНДЕР ============ */
-function render(){
-  try{
-    finalizePastTasks();
-    renderHeader();
-    const main=$('#main');
-    if(state.activeTab==='tasks'){
-      main.innerHTML = renderTasks();
-    } else if(state.activeTab==='notes'){
-      main.innerHTML = renderNotes();
-      renderNotePhotos();
-    } else if(state.activeTab==='achieve'){
-      main.innerHTML = renderAch();
-      renderAchPreview();
-    } else if(state.activeTab==='rituals'){
-      main.innerHTML = renderRituals();
-    } else if(state.activeTab==='food'){
-      main.innerHTML = renderFood();
-    }
-    $$('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===state.activeTab));
-  }catch(err){
-    console.error(err);
-    $('#main').innerHTML=`<div class="card"><div class="empty"><div class="e">⚠️</div>
-      <b>Ошибка:</b> ${esc(err.message)}<br><br>
-      <button class="btn btn-mini btn-primary" onclick="App.resetAll()">Сбросить все данные</button>
-      </div></div>`;
-  }
-}
-
-/* ============ API ============ */
-const App={
-  switchTab(tab){
-    state.activeTab=tab;
-    render();
-    window.scrollTo({top:0,behavior:'smooth'});
-  },
-  changeDate(d){ state.selectedDate=d; state.addTaskOpen=false; render(); },
-  editFocus(){
-    const current = getFocus(state.selectedDate).t;
-    const val = prompt('Введите фокус недели:', current === 'Не задан' ? '' : current);
-    if(val !== null) {
-      state.weekFocus[getMonday(state.selectedDate)] = val.trim();
-      save('weekFocus'); render();
-    }
-  },
-
-  /* ---- задачи ---- */
-  toggleDone(id){
-    const list=state.tasks[state.selectedDate]; if(!list) return;
-    const t=list.find(x=>x.id===id);
-    if(!t||t.status==='failed') return;
-    t.status = t.status==='done' ? null : 'done';
-    save('tasks'); render();
-  },
-  updTask(id,field,val){
-    const list=state.tasks[state.selectedDate]; if(!list) return;
-    const t=list.find(x=>x.id===id); if(!t) return;
-    t[field]=val; save('tasks');
-  },
-  delTask(id){
-    if(!state.tasks[state.selectedDate]) return;
-    state.tasks[state.selectedDate]=state.tasks[state.selectedDate].filter(x=>x.id!==id);
-    save('tasks'); render();
-  },
-  toggleAdd(){ state.addTaskOpen=!state.addTaskOpen; render(); },
-  addTask(){
-    const n=$('#newTaskName'), t=$('#newTaskTarget');
-    const name=(n?n.value:'').trim();
-    if(!name){ toast('Введите название'); return; }
-    const target=(t?t.value:'').trim()||'—';
-    ensureTasksFor(state.selectedDate);
-    state.tasks[state.selectedDate].push({
-      id:'t'+uid(), name, target,
-      type:/мин|час/i.test(target)?'time':'count',
-      reps:'', time:'', note:'', status:null
-    });
-    save('tasks'); state.addTaskOpen=false; render(); toast('Задача добавлена');
-  },
-  noteFromTask(id){
-    const list=state.tasks[state.selectedDate]; if(!list) return;
-    const t=list.find(x=>x.id===id); if(!t) return;
-    state.activeTab='notes'; render();
-    setTimeout(()=>{
-      const ta=$('#noteText'); if(ta) ta.focus();
-      const sel=$('#noteLink');
-      if(sel){
-        let opt=[...sel.options].find(o=>o.value===t.name);
-        if(!opt){ opt=new Option(t.name,t.name); sel.add(opt); }
-        sel.value=t.name;
-      }
-      toast('Заметка привязана к задаче');
-    },60);
-  },
-
-  /* ---- ИМПОРТ ---- */
-  openImport(){
-    $('#importText').value='';
-    $('#importPreview').innerHTML='';
-    $('#importClearFocus').checked=false;
-    $('#importModal').classList.add('show');
-  },
-  closeImport(){ $('#importModal').classList.remove('show'); },
-  loadImportFile(input){
-    const f=input.files[0]; if(!f) return;
-    const fr=new FileReader();
-    fr.onload=e=>{
-      $('#importText').value=e.target.result;
-      App.previewImport();
-      toast('Файл загружен');
-    };
-    fr.readAsText(f,'UTF-8');
-    input.value='';
-  },
-  previewImport(){
-    const text=$('#importText').value;
-    const {map,weekFocus,errors}=parsePlanText(text);
-    const dates=Object.keys(map).sort();
-    const total=dates.reduce((s,d)=>s+map[d].length,0);
-    const focuses=Object.keys(weekFocus);
-    const prev=$('#importPreview');
-    if(!total && !focuses.length && !errors.length){ prev.innerHTML=''; return; }
-    let html='';
-    if(focuses.length){
-      html+=`<div style="font-size:12.5px;color:#3f7d6b;font-weight:700;margin-bottom:6px">📥 Фокусы недель: ${focuses.length}</div>`;
-      focuses.sort().forEach(mk=>{
-        html+=`<div class="prev-focus"><b>с ${fmtDMY(mk)}</b><span>${esc(weekFocus[mk])}</span></div>`;
-      });
-    }
-    if(total){
-      html+=`<div style="font-size:12.5px;color:#7a6ba8;font-weight:700;margin-bottom:6px;margin-top:8px">Задач: ${total} на ${dates.length} дн.</div>`;
-      dates.slice(0,4).forEach(d=>{
-        html+=`<div class="prev-item"><b>${fmtDMY(d)}</b><span>${map[d].length} задач</span></div>`;
-      });
-      if(dates.length>4) html+=`<div class="hint">…и ещё ${dates.length-4} дн.</div>`;
-    }
-    if(errors.length){
-      html+=`<div style="margin-top:8px;font-size:12px;color:#c86b6b">⚠ Пропущено строк: ${errors.length}</div>`;
-    }
-    prev.innerHTML=html;
-  },
-  doImport(mode){
-    const text=$('#importText').value;
-    const {map,weekFocus}=parsePlanText(text);
-    const dates=Object.keys(map);
-    const focuses=Object.keys(weekFocus);
-    if(!dates.length && !focuses.length){ toast('Нет данных для импорта'); return; }
-    if($('#importClearFocus').checked) state.weekFocus={};
-    Object.assign(state.weekFocus, weekFocus);
-    save('weekFocus');
-
-    const today=todayStr();
-    let addedTasks=0, changedDays=0;
-
-    dates.forEach(date=>{
-      const items=map[date];
-      if(mode==='replace'){
-        state.tasks[date]=items.map(t=>({
-          id:'t'+uid(), name:t.name, target:t.target, type:t.type,
-          reps:'', time:'', note:'', status: date<today?'failed':null
-        }));
-        changedDays++; addedTasks+=items.length;
-      } else {
-        if(!state.tasks[date]) state.tasks[date]=[];
-        const room=Math.max(0, 20-state.tasks[date].length);
-        items.slice(0,room).forEach(t=>{
-          state.tasks[date].push({
-            id:'t'+uid(), name:t.name, target:t.target, type:t.type,
-            reps:'', time:'', note:'', status: date<today?'failed':null
-          });
+      if (isVideo) {
+        base64Data = await new Promise(res => {
+          const fr = new FileReader();
+          fr.onload = e => res(e.target.result);
+          fr.readAsDataURL(file);
         });
-        addedTasks+=Math.min(room, items.length);
-        changedDays++;
+      } else {
+        base64Data = await compressImage(file);
       }
+
+      const ext = isVideo ? 'mp4' : 'jpg';
+      const fileName = 'media_' + Date.now() + '_' + Math.floor(Math.random() * 1000) + '.' + ext;
+
+      try {
+        const result = await Capacitor.Plugins.Filesystem.writeFile({
+          path: fileName,
+          data: base64Data.split(',')[1],
+          directory: 'DATA',
+          encoding: 'base64'
+        });
+        return result.uri;
+      } catch (e) {
+        alert('Ошибка сохранения файла: ' + e.message);
+        return null;
+      }
+    }
+
+    /* ============ ПРОВЕРКА ОБНОВЛЕНИЙ ============ */
+    async function checkForUpdates(force = false) {
+      if (BUILD_TAG === 'local') return;
+      const lastCheck = localStorage.getItem('ld_last_update_check');
+      const now = Date.now();
+      if (!force && lastCheck && (now - lastCheck < 12 * 60 * 60 * 1000)) return;
+      localStorage.setItem('ld_last_update_check', now);
+
+      try {
+        const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest?t=${Date.now()}`, {
+          headers: { 'Accept': 'application/vnd.github.v3+json' }
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.tag_name !== BUILD_TAG) {
+          showUpdateModal(data.tag_name, data.body, data.assets);
+        }
+      } catch (e) { console.log('Update check failed:', e); }
+    }
+
+    function showUpdateModal(newTag, notes, assets) {
+      document.getElementById('currentTag').textContent = BUILD_TAG;
+      document.getElementById('newTag').textContent = newTag;
+      document.getElementById('updateNotes').textContent = notes || 'Нет описания изменений.';
+      let downloadUrl = `https://github.com/${GITHUB_REPO}/releases/latest`;
+      if (assets && assets.length > 0) {
+        const apkAsset = assets.find(a => a.name.endsWith('.apk'));
+        if (apkAsset) downloadUrl = apkAsset.browser_download_url;
+      }
+      document.getElementById('updateLink').href = downloadUrl;
+      document.getElementById('updateModal').classList.add('show');
+    }
+
+    /* ============ СОСТОЯНИЕ ============ */
+    const LS = {
+      name: 'ld_name', mother: 'ld_mother', birth: 'ld_birth', avatar: 'ld_avatar',
+      tasks: 'ld_tasks', notes: 'ld_notes', ach: 'ld_ach', rituals: 'ld_rituals',
+      weekFocus: 'ld_weekfocus', onboarded: 'ld_onboarded'
+    };
+
+    function safeParse(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return fallback;
+        const v = JSON.parse(raw);
+        return v == null ? fallback : v;
+      } catch (e) { return fallback }
+    }
+
+    const state = {
+      name: localStorage.getItem(LS.name) || 'Малыш',
+      motherName: localStorage.getItem(LS.mother) || '',
+      birth: localStorage.getItem(LS.birth) || '',
+      avatar: localStorage.getItem(LS.avatar) || '',
+      tasks: safeParse(LS.tasks, {}),
+      notes: safeParse(LS.notes, []),
+      ach: safeParse(LS.ach, []),
+      rituals: safeParse(LS.rituals, []),
+      weekFocus: safeParse(LS.weekFocus, {}),
+      selectedDate: todayStr(),
+      activeTab: 'tasks',
+      addTaskOpen: false,
+      pendingPhotos: [],
+      _achPhoto: '',
+      _achVideo: null,
+      _newAvatar: undefined
+    };
+
+    if (typeof state.tasks !== 'object' || state.tasks === null || Array.isArray(state.tasks)) state.tasks = {};
+    if (!Array.isArray(state.notes)) state.notes = [];
+    if (!Array.isArray(state.ach)) state.ach = [];
+    if (!Array.isArray(state.rituals)) state.rituals = [];
+    if (typeof state.weekFocus !== 'object' || state.weekFocus === null || Array.isArray(state.weekFocus)) state.weekFocus = {};
+
+    function save(k) {
+      const v = state[k];
+      if (typeof v === 'string') localStorage.setItem(LS[k], v);
+      else localStorage.setItem(LS[k], JSON.stringify(v));
+    }
+
+    /* ============ НЕДЕЛЯ ============ */
+    function getWeekNum(dateStr) {
+      if (!state.birth) return 1;
+      const b = new Date(state.birth + 'T00:00:00');
+      const d = new Date(dateStr + 'T00:00:00');
+      const diff = Math.floor((d - b) / 86400000);
+      return Math.max(1, Math.floor(diff / 7) + 1);
+    }
+    function getMonday(dateStr) {
+      const d = new Date(dateStr + 'T00:00:00');
+      const dow = d.getDay();
+      const diff = (dow === 0) ? -6 : (1 - dow);
+      d.setDate(d.getDate() + diff);
+      return todayStr(d);
+    }
+
+    function getFocus(dateStr) {
+      const wn = getWeekNum(dateStr);
+      const mk = getMonday(dateStr);
+      const imported = state.weekFocus[mk];
+      if (imported && imported.trim()) {
+        return { week: wn, t: imported, e: '📥', d: 'Фокус недели из импорта' };
+      }
+      return { week: wn, t: 'Не задан', e: '📅', d: 'Нажмите ✏️ чтобы указать фокус' };
+    }
+
+    function ensureTasksFor(date) {
+      if (!state.tasks[date]) {
+        state.tasks[date] = [];
+        save('tasks');
+      }
+    }
+
+    function finalizePastTasks() {
+      const today = todayStr();
+      let changed = false;
+      for (const date in state.tasks) {
+        if (date < today) {
+          state.tasks[date].forEach(t => {
+            if (!t.status) { t.status = 'failed'; changed = true }
+          });
+        }
+      }
+      if (changed) save('tasks');
+    }
+
+    /* ============ ПАРСЕР TXT ============ */
+    function parsePlanText(text) {
+      const map = {}, weekFocus = {}, errors = [];
+      const lines = String(text || '').split(/\r?\n/);
+      let currentFocus = null;
+      const focusRe = /^\s*фокус(?:\s+недели)?\s*[:\-—–]\s*(.+?)\s*$/i;
+      const dateRe = /^\s*(\d{1,2})\.(\d{1,2})\.(\d{2,4})\s*[:\-—–]\s*(.+?)\s*$/;
+
+      lines.forEach((line, idx) => {
+        const raw = line.trim();
+        if (!raw || raw.startsWith('#')) return;
+
+        const fm = raw.match(focusRe);
+        if (fm) {
+          currentFocus = fm[1].trim() || null;
+          return;
+        }
+
+        const m = raw.match(dateRe);
+        if (!m) { errors.push({ line: idx + 1, text: raw }); return; }
+        let [, d, mo, y, rest] = m;
+        if (y.length === 2) y = '20' + y;
+        const dd = String(+d).padStart(2, '0');
+        const mm = String(+mo).padStart(2, '0');
+        if (+dd < 1 || +dd > 31 || +mm < 1 || +mm > 12) { errors.push({ line: idx + 1, text: raw }); return; }
+        const date = `${y}-${mm}-${dd}`;
+        let name = rest.trim(), target = '—';
+        const pm = rest.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+        if (pm) { name = pm[1].trim(); target = pm[2].trim(); }
+        if (!name) { errors.push({ line: idx + 1, text: raw }); return; }
+        if (!map[date]) map[date] = [];
+        map[date].push({ name, target, type: /мин|час/i.test(target) ? 'time' : 'count' });
+
+        if (currentFocus) weekFocus[getMonday(date)] = currentFocus;
+      });
+
+      return { map, weekFocus, errors };
+    }
+
+    /* ============ HEADER ============ */
+    function renderHeader() {
+      const w = getWeekNum(state.selectedDate);
+      const name = state.name || 'Малыш';
+      $('#childName').textContent = name;
+      let sub = w + '-я неделя жизни';
+      if (state.motherName) sub += ' · мама ' + state.motherName;
+      $('#headerSub').textContent = sub;
+
+      const img = $('#avatarImg'), emoji = $('#avatarEmoji');
+      if (state.avatar) {
+        if (img.getAttribute('src') !== getSrc(state.avatar)) img.src = getSrc(state.avatar);
+        img.style.display = 'block';
+        emoji.style.display = 'none';
+      } else {
+        img.style.display = 'none';
+        emoji.style.display = 'block';
+      }
+    }
+
+    /* ============ ЗАНЯТИЯ ============ */
+    function renderTasks() {
+      ensureTasksFor(state.selectedDate);
+      const date = state.selectedDate;
+      const focus = getFocus(date);
+      const tasks = state.tasks[date] || [];
+      const isPast = date < todayStr();
+      const done = tasks.filter(t => t.status === 'done').length;
+
+      let html = '';
+      html += '<div class="focus-card">'
+        + '<div class="fw">Фокус ' + focus.week + '-й недели <button class="btn btn-mini btn-ghost" style="padding:2px 8px;" onclick="App.editFocus()">✏️</button></div>'
+        + '<div class="ft">' + focus.e + ' ' + esc(focus.t) + '</div>'
+        + '<div class="fd">' + esc(focus.d) + '</div>'
+        + '</div>';
+
+      html += '<div class="datebar">'
+        + '<input type="date" value="' + date + '" onchange="App.changeDate(this.value)">'
+        + '<button class="btn btn-mini btn-ghost" onclick="App.changeDate(\'' + todayStr() + '\')">Сегодня</button>'
+        + '</div>';
+
+      html += '<div class="card">';
+      html += '<div class="card-title"><span>Задачи дня · ' + fmtDate(date) + '</span><span>' + done + '/' + tasks.length + '</span></div>';
+      if (!tasks.length) {
+        html += '<div class="empty"><div class="e">🌸</div>Пока нет задач на этот день</div>';
+      } else {
+        tasks.forEach(t => { html += renderTaskItem(t, isPast); });
+      }
+      html += '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">'
+        + '<button class="btn btn-ghost" onclick="App.toggleAdd()">➕ Добавить задачу</button>'
+        + '<button class="btn btn-primary" onclick="App.openImport()">📥 Импорт плана</button>'
+        + '</div>';
+      if (state.addTaskOpen) html += renderAddTaskForm();
+      html += '</div>';
+
+      const stats = getWeekStats(date);
+      html += '<div class="card">'
+        + '<div class="card-title">Статистика недели</div>'
+        + '<div class="stats">'
+        + '<div class="stat ok"><div class="n">' + stats.done + '</div><div class="l">выполнено</div></div>'
+        + '<div class="stat fail"><div class="n">' + stats.failed + '</div><div class="l">пропущено</div></div>'
+        + '<div class="stat"><div class="n">' + (stats.total ? Math.round(stats.done / stats.total * 100) : 0) + '%</div><div class="l">успех</div></div>'
+        + '</div>'
+        + '<p class="hint">Невыполненные задачи в конце дня автоматически получают минус.</p>'
+        + '</div>';
+      return html;
+    }
+
+    function renderTaskItem(t, isPast) {
+      const status = t.status || (isPast ? 'failed' : 'pending');
+      const cls = status === 'done' ? 'done' : status === 'failed' ? 'failed' : 'pending';
+      const icon = status === 'done' ? '✓' : status === 'failed' ? '✕' : '';
+      const dis = status === 'failed' ? 'disabled' : '';
+      return '<div class="task ' + cls + '">'
+        + '<div class="t-head">'
+        + '<button class="t-check ' + (status === 'done' ? 'done' : status === 'failed' ? 'failed' : '') + '" onclick="App.toggleDone(\'' + t.id + '\')" ' + (status === 'failed' ? 'disabled' : '') + '>' + icon + '</button>'
+        + '<div class="t-info">'
+        + '<div class="t-name">' + esc(t.name) + '</div>'
+        + '<div class="t-meta"><span class="t-badge ' + (t.type === 'time' ? 'time' : '') + '">' + (t.type === 'time' ? '⏱' : '🔁') + ' ' + esc(t.target) + '</span></div>'
+        + '</div></div>'
+        + '<div class="t-controls">'
+        + '<input type="text" placeholder="Повторений" value="' + esc(t.reps) + '" onchange="App.updTask(\'' + t.id + '\',\'reps\',this.value)" ' + dis + '>'
+        + '<input type="text" placeholder="Длительность (напр. 5 мин)" value="' + esc(t.time) + '" onchange="App.updTask(\'' + t.id + '\',\'time\',this.value)" ' + dis + '>'
+        + '<input class="full" type="text" placeholder="Замечание" value="' + esc(t.note) + '" onchange="App.updTask(\'' + t.id + '\',\'note\',this.value)" ' + dis + '>'
+        + '</div>'
+        + '<div class="t-actions">'
+        + '<button class="t-link" onclick="App.noteFromTask(\'' + t.id + '\')">📝 Записать наблюдение</button>'
+        + '<button class="del" onclick="App.delTask(\'' + t.id + '\')">✕</button>'
+        + '</div></div>';
+    }
+
+    function renderAddTaskForm() {
+      return '<div class="add-form">'
+        + '<div class="row"><input type="text" id="newTaskName" placeholder="Название задачи"></div>'
+        + '<div class="row"><input type="text" id="newTaskTarget" placeholder="Цель (напр. 5 мин или 10 раз)"></div>'
+        + '<div class="row" style="justify-content:flex-end">'
+        + '<button class="btn btn-mini btn-ghost" onclick="App.toggleAdd()">Отмена</button>'
+        + '<button class="btn btn-mini btn-primary" onclick="App.addTask()">Добавить</button>'
+        + '</div></div>';
+    }
+
+    function getWeekStats(dateStr) {
+      const w = getWeekNum(dateStr);
+      let done = 0, failed = 0, total = 0;
+      for (const date in state.tasks) {
+        if (getWeekNum(date) !== w) continue;
+        state.tasks[date].forEach(t => {
+          total++;
+          if (t.status === 'done') done++;
+          else if (t.status === 'failed') failed++;
+        });
+      }
+      return { done, failed, total };
+    }
+
+    /* ============ ЗАМЕТКИ ============ */
+    function renderNotes() {
+      let html = '<div class="card">'
+        + '<div class="card-title">Новая заметка / наблюдение</div>'
+        + '<textarea id="noteText" placeholder="Что заметили?"></textarea>'
+        + '<div class="row" style="margin-top:8px"><select id="noteLink"><option value="">— привязать к задаче (необязательно) —</option>' + linkOptions() + '</select></div>'
+        + '<div class="row" style="margin-top:8px;align-items:flex-start">'
+        + '<label class="up-label">📷 Фото<input type="file" accept="image/*" multiple onchange="App.addNotePhoto(this)"></label>'
+        + '<div class="photo-up" id="notePhotoPreview"></div>'
+        + '</div>'
+        + '<div class="row" style="justify-content:flex-end;margin-top:10px">'
+        + '<button class="btn btn-primary" onclick="App.saveNote()">Сохранить</button>'
+        + '</div></div>';
+
+      html += '<div class="card"><div class="card-title">Все наблюдения · ' + state.notes.length + '</div>';
+      if (!state.notes.length) {
+        html += '<div class="empty"><div class="e">📝</div>Пока нет заметок.</div>';
+      } else {
+        [...state.notes].sort((a, b) => b.ts - a.ts).forEach(n => {
+          html += '<div class="note">'
+            + '<div class="note-head"><div>'
+            + '<div class="note-time">' + new Date(n.ts).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) + '</div>'
+            + (n.taskName ? '<div class="note-link" style="margin-top:4px;display:inline-block">📋 ' + esc(n.taskName) + '</div>' : '')
+            + '</div>'
+            + '<button class="del" onclick="App.delNote(\'' + n.id + '\')">✕</button>'
+            + '</div>'
+            + '<div class="note-text">' + esc(n.text) + '</div>';
+          if (n.photos && n.photos.length) {
+            html += '<div class="note-photos">';
+            n.photos.forEach(p => { html += '<img src="' + getSrc(p) + '" onclick="openImg(this.src)">'; });
+            html += '</div>';
+          }
+          html += '</div>';
+        });
+      }
+      html += '</div>';
+      return html;
+    }
+    function linkOptions() {
+      let out = '';
+      const today = todayStr();
+      const yest = addDays(today, -1);
+      [today, yest].forEach(d => {
+        (state.tasks[d] || []).forEach(t => {
+          out += '<option value="' + esc(t.name) + '">' + (d === today ? 'Сегодня' : 'Вчера') + ' · ' + esc(t.name) + '</option>';
+        });
+      });
+      return out;
+    }
+
+    /* ============ ДОСТИЖЕНИЯ ============ */
+    function renderAch() {
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const nowStr = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()) + 'T' + pad(now.getHours()) + ':' + pad(now.getMinutes());
+
+      let html = '<div class="card">'
+        + '<div class="card-title">🏆 Новое достижение</div>'
+        + '<input type="text" id="achTitle" placeholder="Заголовок (напр.: Первая улыбка)" style="margin-bottom:8px">'
+        + '<input type="datetime-local" id="achDate" value="' + nowStr + '" style="margin-bottom:8px">'
+        + '<textarea id="achDesc" placeholder="Описание (необязательно)" style="margin-bottom:8px;min-height:50px;"></textarea>'
+        + '<div class="row" style="margin-bottom:8px; gap:8px; flex-wrap:wrap;">'
+        + '<label class="up-label">📷 Фото<input type="file" accept="image/*" onchange="App.addAchPhoto(this)"></label>'
+        + '<label class="up-label" style="background:var(--purple-soft);color:#7a6ba8;">🎥 Видео<input type="file" accept="video/*" onchange="App.addAchVideo(this)"></label>'
+        + '</div>'
+        + '<div class="photo-up" id="achPhotoPreview"></div>'
+        + '<div class="row" style="justify-content:flex-end;margin-top:10px">'
+        + '<button class="btn btn-primary" onclick="App.saveAch()">Добавить</button>'
+        + '</div></div>';
+
+      html += '<div class="card"><div class="card-title">Все достижения · ' + state.ach.length + '</div>';
+      if (!state.ach.length) {
+        html += '<div class="empty"><div class="e">🌟</div>Каждое «впервые» — победа!</div>';
+      } else {
+        [...state.ach].sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(a => {
+          const d = new Date(a.date);
+          html += '<div class="ach">'
+            + '<div class="row" style="justify-content:space-between"><div>'
+            + '<div class="ach-title">🎉 ' + esc(a.title) + '</div>'
+            + '<div class="ach-date">' + d.toLocaleString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</div>'
+            + '</div>'
+            + '<button class="del" onclick="App.delAch(\'' + a.id + '\')">✕</button>'
+            + '</div>';
+          if (a.desc) html += '<div class="ach-desc">' + esc(a.desc) + '</div>';
+          if (a.photo) html += '<img src="' + getSrc(a.photo) + '" onclick="openImg(this.src)">';
+          if (a.video) html += '<video src="' + getSrc(a.video) + '" controls></video>';
+          html += '</div>';
+        });
+      }
+      html += '</div>';
+      return html;
+    }
+
+    /* ============ РИТУАЛЫ ============ */
+    function renderRituals() {
+      const today = todayStr();
+      let html = '';
+      state.rituals.forEach(r => {
+        const done = (r.completions && r.completions[today]) || {};
+        const doneCount = Object.values(done).filter(Boolean).length;
+        const total = r.steps.length;
+        const all = total > 0 && doneCount === total;
+
+        html += '<div class="ritual">'
+          + '<div class="ritual-head">'
+          + '<div class="ritual-name">' + (r.emoji || '🌙') + ' ' + esc(r.name) + '</div>'
+          + '<div style="display:flex;gap:6px;align-items:center;">'
+          + '<button class="btn btn-mini btn-ghost" onclick="App.checkAllRitual(\'' + r.id + '\')">✅ Все</button>'
+          + '<div class="period">' + (r.period === 'daily' ? 'каждый день' : r.period === 'weekly' ? 'каждую неделю' : 'каждый месяц') + '</div>'
+          + '</div></div>';
+
+        r.steps.forEach(s => {
+          const on = done[s.id];
+          html += '<div class="step ' + (on ? 'on' : '') + '">'
+            + '<button class="step-check ' + (on ? 'on' : '') + '" onclick="App.toggleStep(\'' + r.id + '\',\'' + s.id + '\')">' + (on ? '✓' : '') + '</button>'
+            + '<div class="step-text">' + esc(s.text) + '</div>'
+            + '<button class="del" onclick="App.delStep(\'' + r.id + '\',\'' + s.id + '\')">✕</button>'
+            + '</div>';
+        });
+
+        html += '<div class="row" style="justify-content:space-between;margin-top:10px">'
+          + '<div style="font-size:12px;color:#8d8091">' + (all ? '✅ Выполнено!' : 'Выполнено ' + doneCount + ' из ' + total) + '</div>'
+          + '<button class="del" onclick="App.delRitual(\'' + r.id + '\')">Удалить</button>'
+          + '</div>'
+          + '<div class="row" style="margin-top:8px">'
+          + '<input type="text" placeholder="Добавить шаг…" id="stepInput_' + r.id + '" onkeydown="if(event.key===\'Enter\')App.addStep(\'' + r.id + '\')">'
+          + '<button class="btn btn-mini btn-ghost" onclick="App.addStep(\'' + r.id + '\')">+</button>'
+          + '</div></div>';
+      });
+
+      html += '<div class="card">'
+        + '<div class="card-title">Создать ритуал</div>'
+        + '<input type="text" id="ritName" placeholder="Название" style="margin-bottom:8px">'
+        + '<select id="ritPeriod" style="margin-bottom:8px">'
+        + '<option value="daily">Каждый день</option>'
+        + '<option value="weekly">Каждую неделю</option>'
+        + '<option value="monthly">Каждый месяц</option>'
+        + '</select>'
+        + '<button class="btn btn-primary" onclick="App.addRitual()">Создать</button>'
+        + '</div>';
+      return html;
+    }
+
+    /* ============ ПРИКОРМ ============ */
+    function renderFood() {
+      return '<div class="card"><div class="empty"><div class="e">🍼</div>'
+        + '<h3 style="font-size:18px;margin-bottom:8px;color:var(--text)">Прикорм</h3>'
+        + '<p>Раздел в разработке 💛</p>'
+        + '</div></div>';
+    }
+
+    /* ============ РЕНДЕР ============ */
+    function render() {
+      try {
+        finalizePastTasks();
+        renderHeader();
+        const main = $('#main');
+        if (state.activeTab === 'tasks') {
+          main.innerHTML = renderTasks();
+        } else if (state.activeTab === 'notes') {
+          main.innerHTML = renderNotes();
+          renderNotePhotos();
+        } else if (state.activeTab === 'achieve') {
+          main.innerHTML = renderAch();
+          renderAchPreview();
+        } else if (state.activeTab === 'rituals') {
+          main.innerHTML = renderRituals();
+        } else if (state.activeTab === 'food') {
+          main.innerHTML = renderFood();
+        }
+        $$('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === state.activeTab));
+      } catch (err) {
+        console.error(err);
+        $('#main').innerHTML = '<div class="card"><div class="empty"><div class="e">⚠️</div>'
+          + '<b>Ошибка:</b> ' + esc(err.message) + '<br><br>'
+          + '<button class="btn btn-mini btn-primary" onclick="App.resetAll()">Сбросить все данные</button>'
+          + '</div></div>';
+      }
+    }
+
+    /* ============ API ============ */
+    const App = {
+      switchTab(tab) {
+        state.activeTab = tab;
+        render();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      },
+      changeDate(d) { state.selectedDate = d; state.addTaskOpen = false; render(); },
+      editFocus() {
+        const current = getFocus(state.selectedDate).t;
+        const val = prompt('Введите фокус недели:', current === 'Не задан' ? '' : current);
+        if (val !== null) {
+          state.weekFocus[getMonday(state.selectedDate)] = val.trim();
+          save('weekFocus'); render();
+        }
+      },
+
+      /* ---- задачи ---- */
+      toggleDone(id) {
+        const list = state.tasks[state.selectedDate]; if (!list) return;
+        const t = list.find(x => x.id === id);
+        if (!t || t.status === 'failed') return;
+        t.status = t.status === 'done' ? null : 'done';
+        save('tasks'); render();
+      },
+      updTask(id, field, val) {
+        const list = state.tasks[state.selectedDate]; if (!list) return;
+        const t = list.find(x => x.id === id); if (!t) return;
+        t[field] = val; save('tasks');
+      },
+      delTask(id) {
+        if (!state.tasks[state.selectedDate]) return;
+        state.tasks[state.selectedDate] = state.tasks[state.selectedDate].filter(x => x.id !== id);
+        save('tasks'); render();
+      },
+      toggleAdd() { state.addTaskOpen = !state.addTaskOpen; render(); },
+      addTask() {
+        const n = $('#newTaskName'), t = $('#newTaskTarget');
+        const name = (n ? n.value : '').trim();
+        if (!name) { toast('Введите название'); return; }
+        const target = (t ? t.value : '').trim() || '—';
+        ensureTasksFor(state.selectedDate);
+        state.tasks[state.selectedDate].push({
+          id: 't' + uid(), name, target,
+          type: /мин|час/i.test(target) ? 'time' : 'count',
+          reps: '', time: '', note: '', status: null
+        });
+        save('tasks'); state.addTaskOpen = false; render(); toast('Задача добавлена');
+      },
+      noteFromTask(id) {
+        const list = state.tasks[state.selectedDate]; if (!list) return;
+        const t = list.find(x => x.id === id); if (!t) return;
+        state.activeTab = 'notes'; render();
+        setTimeout(() => {
+          const ta = $('#noteText'); if (ta) ta.focus();
+          const sel = $('#noteLink');
+          if (sel) {
+            let opt = [...sel.options].find(o => o.value === t.name);
+            if (!opt) { opt = new Option(t.name, t.name); sel.add(opt); }
+            sel.value = t.name;
+          }
+          toast('Заметка привязана к задаче');
+        }, 60);
+      },
+
+      /* ---- ИМПОРТ ---- */
+      openImport() {
+        $('#importText').value = '';
+        $('#importPreview').innerHTML = '';
+        $('#importClearFocus').checked = false;
+        $('#importModal').classList.add('show');
+      },
+      closeImport() { $('#importModal').classList.remove('show'); },
+      loadImportFile(input) {
+        const f = input.files[0]; if (!f) return;
+        const fr = new FileReader();
+        fr.onload = e => {
+          $('#importText').value = e.target.result;
+          App.previewImport();
+          toast('Файл загружен');
+        };
+        fr.readAsText(f, 'UTF-8');
+        input.value = '';
+      },
+      previewImport() {
+        const text = $('#importText').value;
+        const { map, weekFocus, errors } = parsePlanText(text);
+        const dates = Object.keys(map).sort();
+        const total = dates.reduce((s, d) => s + map[d].length, 0);
+        const focuses = Object.keys(weekFocus);
+        const prev = $('#importPreview');
+        if (!total && !focuses.length && !errors.length) { prev.innerHTML = ''; return; }
+        let html = '';
+        if (focuses.length) {
+          html += '<div style="font-size:12.5px;color:#3f7d6b;font-weight:700;margin-bottom:6px">'
+            + '📥 Фокусы недель: ' + focuses.length + '</div>';
+          focuses.sort().forEach(mk => {
+            html += '<div class="prev-focus"><b>с ' + fmtDMY(mk) + '</b><span>' + esc(weekFocus[mk]) + '</span></div>';
+          });
+        }
+        if (total) {
+          html += '<div style="font-size:12.5px;color:#7a6ba8;font-weight:700;margin-bottom:6px;margin-top:8px">'
+            + 'Задач: ' + total + ' на ' + dates.length + ' дн.</div>';
+          dates.slice(0, 4).forEach(d => {
+            html += '<div class="prev-item"><b>' + fmtDMY(d) + '</b><span>' + map[d].length + ' задач</span></div>';
+          });
+          if (dates.length > 4) html += '<div class="hint">…и ещё ' + (dates.length - 4) + ' дн.</div>';
+        }
+        if (errors.length) {
+          html += '<div style="margin-top:8px;font-size:12px;color:#c86b6b">⚠ Пропущено строк: ' + errors.length + '</div>';
+        }
+        prev.innerHTML = html;
+      },
+      doImport(mode) {
+        const text = $('#importText').value;
+        const { map, weekFocus } = parsePlanText(text);
+        const dates = Object.keys(map);
+        const focuses = Object.keys(weekFocus);
+        if (!dates.length && !focuses.length) { toast('Нет данных для импорта'); return; }
+        if ($('#importClearFocus').checked) state.weekFocus = {};
+        Object.assign(state.weekFocus, weekFocus);
+        save('weekFocus');
+
+        const today = todayStr();
+        let addedTasks = 0, changedDays = 0;
+
+        dates.forEach(date => {
+          const items = map[date];
+          if (mode === 'replace') {
+            state.tasks[date] = items.map(t => ({
+              id: 't' + uid(), name: t.name, target: t.target, type: t.type,
+              reps: '', time: '', note: '', status: date < today ? 'failed' : null
+            }));
+            changedDays++; addedTasks += items.length;
+          } else {
+            if (!state.tasks[date]) state.tasks[date] = [];
+            const room = Math.max(0, 20 - state.tasks[date].length);
+            items.slice(0, room).forEach(t => {
+              state.tasks[date].push({
+                id: 't' + uid(), name: t.name, target: t.target, type: t.type,
+                reps: '', time: '', note: '', status: date < today ? 'failed' : null
+              });
+            });
+            addedTasks += Math.min(room, items.length);
+            changedDays++;
+          }
+        });
+
+        save('tasks');
+        App.closeImport();
+        render();
+        let msg = 'Импортировано: ' + addedTasks + ' задач на ' + changedDays + ' дн.';
+        if (focuses.length) msg += ' · фокусов: ' + focuses.length;
+        toast(msg);
+      },
+
+      /* ---- заметки ---- */
+      async addNotePhoto(input) {
+        const files = [...input.files].slice(0, 5);
+        for (const f of files) {
+          const data = await saveMediaFile(f, false);
+          if (data) state.pendingPhotos.push(data);
+        }
+        input.value = ''; renderNotePhotos();
+      },
+      saveNote() {
+        const ta = $('#noteText');
+        const text = ta ? ta.value.trim() : '';
+        if (!text && !state.pendingPhotos.length) { toast('Добавьте текст или фото'); return; }
+        const sel = $('#noteLink');
+        state.notes.push({
+          id: uid(), ts: Date.now(), text,
+          taskName: sel ? sel.value : '',
+          photos: [...state.pendingPhotos]
+        });
+        state.pendingPhotos = [];
+        save('notes'); render(); toast('Заметка сохранена ✨');
+      },
+      delNote(id) {
+        if (!confirm('Удалить заметку?')) return;
+        state.notes = state.notes.filter(n => n.id !== id);
+        save('notes'); render();
+      },
+
+      /* ---- достижения ---- */
+      async addAchPhoto(input) {
+        const f = input.files[0]; if (!f) return;
+        const data = await saveMediaFile(f, false);
+        if (data) {
+          state._achPhoto = data;
+          renderAchPreview();
+        }
+        input.value = '';
+      },
+      async addAchVideo(input) {
+        const f = input.files[0]; if (!f) return;
+        const data = await saveMediaFile(f, true);
+        if (data) {
+          state._achVideo = data;
+          renderAchPreview();
+        }
+        input.value = '';
+      },
+      _delAchPhoto() { state._achPhoto = ''; renderAchPreview(); },
+      _delAchVideo() { state._achVideo = null; renderAchPreview(); },
+      saveAch() {
+        const t = $('#achTitle'), d = $('#achDate'), desc = $('#achDesc');
+        const title = t ? t.value.trim() : '';
+        if (!title) { toast('Введите заголовок'); return; }
+        state.ach.push({
+          id: uid(), title,
+          date: (d && d.value) || new Date().toISOString(),
+          desc: desc ? desc.value.trim() : '',
+          photo: state._achPhoto || '',
+          video: state._achVideo || null
+        });
+        state._achPhoto = '';
+        state._achVideo = null;
+        save('ach'); render(); toast('Достижение записано 🎉');
+      },
+      delAch(id) {
+        if (!confirm('Удалить достижение?')) return;
+        state.ach = state.ach.filter(a => a.id !== id);
+        save('ach'); render();
+      },
+
+      /* ---- ритуалы ---- */
+      toggleStep(rid, sid) {
+        const r = state.rituals.find(x => x.id === rid); if (!r) return;
+        const today = todayStr();
+        if (!r.completions) r.completions = {};
+        if (!r.completions[today]) r.completions[today] = {};
+        r.completions[today][sid] = !r.completions[today][sid];
+        save('rituals'); render();
+      },
+      checkAllRitual(rid) {
+        const r = state.rituals.find(x => x.id === rid); if (!r) return;
+        const today = todayStr();
+        if (!r.completions) r.completions = {};
+        if (!r.completions[today]) r.completions[today] = {};
+        r.steps.forEach(s => { r.completions[today][s.id] = true; });
+        save('rituals'); render();
+      },
+      addStep(rid) {
+        const inp = document.getElementById('stepInput_' + rid);
+        const text = inp ? inp.value.trim() : '';
+        if (!text) return;
+        const r = state.rituals.find(x => x.id === rid); if (!r) return;
+        r.steps.push({ id: uid(), text });
+        save('rituals'); render();
+      },
+      delStep(rid, sid) {
+        const r = state.rituals.find(x => x.id === rid); if (!r) return;
+        r.steps = r.steps.filter(s => s.id !== sid);
+        save('rituals'); render();
+      },
+      delRitual(id) {
+        if (!confirm('Удалить ритуал?')) return;
+        state.rituals = state.rituals.filter(r => r.id !== id);
+        save('rituals'); render();
+      },
+      addRitual() {
+        const n = $('#ritName'), p = $('#ritPeriod');
+        const name = n ? n.value.trim() : '';
+        if (!name) { toast('Введите название'); return; }
+        state.rituals.push({
+          id: uid(), name, emoji: '✨',
+          period: p ? p.value : 'daily',
+          steps: [], completions: {}
+        });
+        save('rituals'); render(); toast('Ритуал создан');
+      },
+
+      /* ---- АВАТАР ---- */
+      async loadAvatar(input) {
+        const f = input.files[0]; if (!f) return;
+        state._newAvatar = await saveMediaFile(f, false);
+        input.value = '';
+        App._renderAvatarPreview();
+      },
+      clearAvatar() {
+        state._newAvatar = '';
+        App._renderAvatarPreview();
+      },
+      _renderAvatarPreview() {
+        const img = $('#avatarPreview'), emoji = $('#avatarPreviewEmoji');
+        const src = (state._newAvatar !== undefined) ? state._newAvatar : state.avatar;
+        if (src) {
+          img.src = getSrc(src); img.style.display = 'block';
+          emoji.style.display = 'none';
+        } else {
+          img.style.display = 'none';
+          emoji.style.display = 'block';
+        }
+      },
+
+      /* ---- НАСТРОЙКИ ---- */
+      openSettings(firstTime) {
+        $('#setName').value = (state.name && state.name !== 'Малыш') ? state.name : '';
+        $('#setMother').value = state.motherName || '';
+        $('#setBirth').value = state.birth || '';
+        state._newAvatar = state.avatar || '';
+        App._renderAvatarPreview();
+        $('#settingsTitle').textContent = firstTime ? 'Добро пожаловать! 👋' : 'Настройки';
+        $('#settingsModal').classList.add('show');
+      },
+      saveSettings() {
+        state.name = $('#setName').value.trim() || 'Малыш';
+        state.motherName = $('#setMother').value.trim();
+        state.birth = $('#setBirth').value;
+        state.avatar = state._newAvatar || '';
+        save('name'); save('motherName'); save('birth'); save('avatar');
+        localStorage.setItem(LS.onboarded, '1');
+        $('#settingsModal').classList.remove('show');
+        render();
+        toast('Сохранено ✨');
+      },
+      resetAll() {
+        if (!confirm('Удалить все данные приложения? Это необратимо.')) return;
+        Object.values(LS).forEach(k => localStorage.removeItem(k));
+        location.reload();
+      }
+    };
+    window.App = App;
+    window.openImg = openImg;
+
+    function renderNotePhotos() {
+      const el = $('#notePhotoPreview'); if (!el) return;
+      let html = '';
+      state.pendingPhotos.forEach((p, i) => {
+        html += '<div class="photo-prev"><img src="' + getSrc(p) + '"><button onclick="App._delNotePhoto(' + i + ')">✕</button></div>';
+      });
+      el.innerHTML = html;
+    }
+    App._delNotePhoto = (i) => { state.pendingPhotos.splice(i, 1); renderNotePhotos(); };
+
+    function renderAchPreview() {
+      const el = $('#achPhotoPreview'); if (!el) return;
+      let html = '';
+      if (state._achPhoto) {
+        html += '<div class="photo-prev"><img src="' + getSrc(state._achPhoto) + '"><button onclick="App._delAchPhoto()">✕</button></div>';
+      }
+      if (state._achVideo) {
+        html += '<div class="photo-prev"><video src="' + getSrc(state._achVideo) + '"></video><button onclick="App._delAchVideo()">✕</button></div>';
+      }
+      el.innerHTML = html;
+    }
+
+    /* ============ СОБЫТИЯ ============ */
+    $('#tabs').addEventListener('click', e => {
+      const b = e.target.closest('.tab');
+      if (b) App.switchTab(b.dataset.tab);
+    });
+    $('#avatarBtn').addEventListener('click', () => App.openSettings(false));
+    $('#avatarEdit').addEventListener('click', () => $('#avatarFile').click());
+    $('#settingsModal').addEventListener('click', e => {
+      if (e.target.id === 'settingsModal') e.target.classList.remove('show');
+    });
+    $('#importModal').addEventListener('click', e => {
+      if (e.target.id === 'importModal') e.target.classList.remove('show');
     });
 
-    save('tasks');
-    App.closeImport();
-    render();
-    let msg=`Импортировано: ${addedTasks} задач на ${changedDays} дн.`;
-    if(focuses.length) msg+=` · фокусов: ${focuses.length}`;
-    toast(msg);
-  },
+    /* ============ ИНИЦИАЛИЗАЦИЯ ============ */
+    (function init() {
+      if (!state.rituals.length && !localStorage.getItem(LS.onboarded)) {
+        state.rituals = [
+          {
+            id: uid(), name: 'Ритуал сна', emoji: '🌙', period: 'daily', steps: [
+              { id: uid(), text: 'Выключить свет' },
+              { id: uid(), text: 'Запеленать' },
+              { id: uid(), text: 'Покормить' },
+              { id: uid(), text: 'Подержать столбиком' },
+              { id: uid(), text: 'Прочесть сказку на ночь' },
+              { id: uid(), text: 'Открыть окно / проветрить' }
+            ], completions: {}
+          },
+          {
+            id: uid(), name: 'Утренний ритуал', emoji: '☀️', period: 'daily', steps: [
+              { id: uid(), text: 'Умывание' },
+              { id: uid(), text: 'Воздушные ванны 5 мин' },
+              { id: uid(), text: 'Лёгкий массаж' },
+              { id: uid(), text: 'Кормление' }
+            ], completions: {}
+          }
+        ];
+        save('rituals');
+      }
 
-  /* ---- заметки ---- */
-  async addNotePhoto(input){
-    const files=[...input.files].slice(0,5);
-    for(const f of files){
-      const data=await saveMediaFile(f, false);
-      if(data) state.pendingPhotos.push(data);
-    }
-    input.value=''; renderNotePhotos();
-  },
-  saveNote(){
-    const ta=$('#noteText');
-    const text=ta?ta.value.trim():'';
-    if(!text && !state.pendingPhotos.length){ toast('Добавьте текст или фото'); return; }
-    const sel=$('#noteLink');
-    state.notes.push({
-      id:uid(), ts:Date.now(), text,
-      taskName: sel?sel.value:'',
-      photos: [...state.pendingPhotos]
-    });
-    state.pendingPhotos=[];
-    save('notes'); render(); toast('Заметка сохранена ✨');
-  },
-  delNote(id){
-    if(!confirm('Удалить заметку?')) return;
-    state.notes=state.notes.filter(n=>n.id!==id);
-    save('notes'); render();
-  },
+      ensureTasksFor(todayStr());
+      finalizePastTasks();
+      render();
 
-  /* ---- достижения ---- */
-  async addAchPhoto(input){
-    const f=input.files[0]; if(!f) return;
-    const data = await saveMediaFile(f, false);
-    if(data) {
-      state._achPhoto=data; 
-      renderAchPreview();
-    }
-    input.value=''; 
-  },
-  async addAchVideo(input){
-    const f=input.files[0]; if(!f) return;
-    const data = await saveMediaFile(f, true);
-    if(data) {
-      state._achVideo=data; 
-      renderAchPreview();
-    }
-    input.value='';
-  },
-  _delAchPhoto(){ state._achPhoto=''; renderAchPreview(); },
-  _delAchVideo(){ state._achVideo=null; renderAchPreview(); },
-  saveAch(){
-    const t=$('#achTitle'), d=$('#achDate'), desc=$('#achDesc');
-    const title=t?t.value.trim():'';
-    if(!title){ toast('Введите заголовок'); return; }
-    state.ach.push({
-      id:uid(), title,
-      date: (d&&d.value)||new Date().toISOString(),
-      desc: desc?desc.value.trim():'',
-      photo: state._achPhoto||'',
-      video: state._achVideo||null
-    });
-    state._achPhoto='';
-    state._achVideo=null;
-    save('ach'); render(); toast('Достижение записано 🎉');
-  },
-  delAch(id){
-    if(!confirm('Удалить достижение?')) return;
-    state.ach=state.ach.filter(a=>a.id!==id);
-    save('ach'); render();
-  },
+      if (!localStorage.getItem(LS.onboarded)) {
+        setTimeout(() => App.openSettings(true), 300);
+      }
 
-  /* ---- ритуалы ---- */
-  toggleStep(rid,sid){
-    const r=state.rituals.find(x=>x.id===rid); if(!r) return;
-    const today=todayStr();
-    if(!r.completions) r.completions={};
-    if(!r.completions[today]) r.completions[today]={};
-    r.completions[today][sid]=!r.completions[today][sid];
-    save('rituals'); render();
-  },
-  checkAllRitual(rid){
-    const r=state.rituals.find(x=>x.id===rid); if(!r) return;
-    const today=todayStr();
-    if(!r.completions) r.completions={};
-    if(!r.completions[today]) r.completions[today]={};
-    r.steps.forEach(s=>{ r.completions[today][s.id]=true; });
-    save('rituals'); render();
-  },
-  addStep(rid){
-    const inp=document.getElementById('stepInput_'+rid);
-    const text=inp?inp.value.trim():'';
-    if(!text) return;
-    const r=state.rituals.find(x=>x.id===rid); if(!r) return;
-    r.steps.push({id:uid(), text});
-    save('rituals'); render();
-  },
-  delStep(rid,sid){
-    const r=state.rituals.find(x=>x.id===rid); if(!r) return;
-    r.steps=r.steps.filter(s=>s.id!==sid);
-    save('rituals'); render();
-  },
-  delRitual(id){
-    if(!confirm('Удалить ритуал?')) return;
-    state.rituals=state.rituals.filter(r=>r.id!==id);
-    save('rituals'); render();
-  },
-  addRitual(){
-    const n=$('#ritName'), p=$('#ritPeriod');
-    const name=n?n.value.trim():'';
-    if(!name){ toast('Введите название'); return; }
-    state.rituals.push({
-      id:uid(), name, emoji:'✨',
-      period: p?p.value:'daily',
-      steps:[], completions:{}
-    });
-    save('rituals'); render(); toast('Ритуал создан');
-  },
-
-  /* ---- АВАТАР ---- */
-  async loadAvatar(input){
-    const f=input.files[0]; if(!f) return;
-    state._newAvatar=await saveMediaFile(f, false);
-    input.value='';
-    App._renderAvatarPreview();
-  },
-  clearAvatar(){
-    state._newAvatar='';
-    App._renderAvatarPreview();
-  },
-  _renderAvatarPreview(){
-    const img=$('#avatarPreview'), emoji=$('#avatarPreviewEmoji');
-    const src = (state._newAvatar!==undefined) ? state._newAvatar : state.avatar;
-    if(src){
-      img.src=getSrc(src); img.style.display='block';
-      emoji.style.display='none';
-    } else {
-      img.style.display='none';
-      emoji.style.display='block';
-    }
-  },
-
-  /* ---- НАСТРОЙКИ ---- */
-  openSettings(firstTime){
-    $('#setName').value = (state.name && state.name!=='Малыш') ? state.name : '';
-    $('#setMother').value = state.motherName||'';
-    $('#setBirth').value = state.birth||'';
-    state._newAvatar = state.avatar||'';
-    App._renderAvatarPreview();
-    $('#settingsTitle').textContent = firstTime ? 'Добро пожаловать! 👋' : 'Настройки';
-    $('#settingsModal').classList.add('show');
-  },
-  saveSettings(){
-    state.name = $('#setName').value.trim() || 'Малыш';
-    state.motherName = $('#setMother').value.trim();
-    state.birth = $('#setBirth').value;
-    state.avatar = state._newAvatar || '';
-    save('name'); save('motherName'); save('birth'); save('avatar');
-    localStorage.setItem(LS.onboarded,'1');
-    $('#settingsModal').classList.remove('show');
-    render();
-    toast('Сохранено ✨');
-  },
-  resetAll(){
-    if(!confirm('Удалить все данные приложения? Это необратимо.')) return;
-    Object.values(LS).forEach(k=>localStorage.removeItem(k));
-    location.reload();
-  }
-};
-window.App=App;
-window.openImg=openImg;
-
-function renderNotePhotos(){
-  const el=$('#notePhotoPreview'); if(!el) return;
-  let html='';
-  state.pendingPhotos.forEach((p,i)=>{
-    html+=`<div class="photo-prev"><img src="${getSrc(p)}"><button onclick="App._delNotePhoto(${i})">✕</button></div>`;
-  });
-  el.innerHTML=html;
-}
-App._delNotePhoto=(i)=>{ state.pendingPhotos.splice(i,1); renderNotePhotos(); };
-
-function renderAchPreview(){
-  const el=$('#achPhotoPreview'); if(!el) return;
-  let html='';
-  if(state._achPhoto) {
-    html+=`<div class="photo-prev"><img src="${getSrc(state._achPhoto)}"><button onclick="App._delAchPhoto()">✕</button></div>`;
-  }
-  if(state._achVideo) {
-    html+=`<div class="photo-prev"><video src="${getSrc(state._achVideo)}"></video><button onclick="App._delAchVideo()">✕</button></div>`;
-  }
-  el.innerHTML=html;
-}
-
-/* ============ СОБЫТИЯ ============ */
-$('#tabs').addEventListener('click',e=>{
-  const b=e.target.closest('.tab');
-  if(b) App.switchTab(b.dataset.tab);
-});
-$('#avatarBtn').addEventListener('click',()=>App.openSettings(false));
-$('#avatarEdit').addEventListener('click',()=>$('#avatarFile').click());
-$('#settingsModal').addEventListener('click',e=>{
-  if(e.target.id==='settingsModal') e.target.classList.remove('show');
-});
-$('#importModal').addEventListener('click',e=>{
-  if(e.target.id==='importModal') e.target.classList.remove('show');
-});
-
-/* ============ ИНИЦИАЛИЗАЦИЯ ============ */
-(function init(){
-  if(!state.rituals.length && !localStorage.getItem(LS.onboarded)){
-    state.rituals=[
-      {id:uid(),name:'Ритуал сна',emoji:'🌙',period:'daily',steps:[
-        {id:uid(),text:'Выключить свет'},
-        {id:uid(),text:'Запеленать'},
-        {id:uid(),text:'Покормить'},
-        {id:uid(),text:'Подержать столбиком'},
-        {id:uid(),text:'Прочесть сказку на ночь'},
-        {id:uid(),text:'Открыть окно / проветрить'}
-      ],completions:{}},
-      {id:uid(),name:'Утренний ритуал',emoji:'☀️',period:'daily',steps:[
-        {id:uid(),text:'Умывание'},
-        {id:uid(),text:'Воздушные ванны 5 мин'},
-        {id:uid(),text:'Лёгкий массаж'},
-        {id:uid(),text:'Кормление'}
-      ],completions:{}}
-    ];
-    save('rituals');
-  }
-  
-  ensureTasksFor(todayStr());
-  finalizePastTasks();
-  render();
-
-  if(!localStorage.getItem(LS.onboarded)){
-    setTimeout(()=>App.openSettings(true), 300);
-  }
-
-  setTimeout(() => checkForUpdates(false), 3000);
-})();
-</script>
+      setTimeout(() => checkForUpdates(false), 3000);
+    })();
+  </script>
 </body>
+
 </html>
