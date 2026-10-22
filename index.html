@@ -1040,7 +1040,7 @@
 
   <script>
     /* ============ НАСТРОЙКИ ОБНОВЛЕНИЙ ============ */
-    const APP_VERSION = '1.0.1';
+    const APP_VERSION = '1.0.2'; // FIX: bump версии после исправления багов
     const BUILD_TAG = 'local';
     const GITHUB_REPO = 'denispan88-svg/BabyDiary';
 
@@ -1057,40 +1057,65 @@
     function openImg(src) { $('#lbImg').src = src; $('#lightbox').classList.add('show') }
 
     /* ============ РАБОТА С ФАЙЛАМИ (ТОЛЬКО ДЛЯ ПРИЛОЖЕНИЯ) ============ */
-    // Получить правильный URL для отображения картинки/видео из файловой системы
+    // FIX: getSrc больше не падает в браузере без Capacitor и не трогает data:/http:/blob: URL
     function getSrc(uri) {
       if (!uri) return '';
-      return Capacitor.convertFileSrc(uri);
+      if (uri.startsWith('data:') || uri.startsWith('http://') || uri.startsWith('https://') || uri.startsWith('blob:')) {
+        return uri;
+      }
+      if (window.Capacitor && typeof Capacitor.convertFileSrc === 'function') {
+        return Capacitor.convertFileSrc(uri);
+      }
+      return uri; // превью в браузере
     }
 
-    // Сжатие изображений перед сохранением
+    // FIX: обработка onerror — если файл битый, промис не зависнет
     function compressImage(file, max = 900) {
       return new Promise(res => {
         const fr = new FileReader();
+        fr.onerror = () => res(null);
         fr.onload = e => {
-          const img = new Image(); img.onload = () => {
+          const img = new Image();
+          img.onload = () => {
             const cv = document.createElement('canvas'); let { width: w, height: h } = img;
             if (w > h && w > max) { h *= max / w; w = max } else if (h > max) { w *= max / h; h = max }
             cv.width = w; cv.height = h; cv.getContext('2d').drawImage(img, 0, 0, w, h);
             res(cv.toDataURL('image/jpeg', .72));
-          }; img.src = e.target.result
+          };
+          img.onerror = () => res(null);
+          img.src = e.target.result;
         };
         fr.readAsDataURL(file);
       })
     }
 
-    // Сохранение медиа напрямую в файловую систему Android
+    // FIX: проверка размера видео, обработка ошибок чтения, fallback для браузера
     async function saveMediaFile(file, isVideo) {
-      let base64Data = '';
+      if (!file) return null;
+      if (isVideo && file.size > 30 * 1024 * 1024) {
+        alert('Видео больше 30 МБ. Выберите файл поменьше.');
+        return null;
+      }
 
+      let base64Data = '';
       if (isVideo) {
         base64Data = await new Promise(res => {
           const fr = new FileReader();
           fr.onload = e => res(e.target.result);
+          fr.onerror = () => res(null);
           fr.readAsDataURL(file);
         });
       } else {
         base64Data = await compressImage(file);
+      }
+      if (!base64Data) {
+        alert('Не удалось прочитать файл.');
+        return null;
+      }
+
+      // Fallback для браузера — вернём dataURL, чтобы приложение можно было отладить
+      if (!window.Capacitor || !Capacitor.Plugins || !Capacitor.Plugins.Filesystem) {
+        return base64Data;
       }
 
       const ext = isVideo ? 'mp4' : 'jpg';
@@ -1111,18 +1136,19 @@
     }
 
     /* ============ ПРОВЕРКА ОБНОВЛЕНИЙ ============ */
+    // FIX: метка времени пишется только после успешного запроса
     async function checkForUpdates(force = false) {
       if (BUILD_TAG === 'local') return;
       const lastCheck = localStorage.getItem('ld_last_update_check');
       const now = Date.now();
       if (!force && lastCheck && (now - lastCheck < 12 * 60 * 60 * 1000)) return;
-      localStorage.setItem('ld_last_update_check', now);
 
       try {
         const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest?t=${Date.now()}`, {
           headers: { 'Accept': 'application/vnd.github.v3+json' }
         });
         if (!res.ok) return;
+        localStorage.setItem('ld_last_update_check', now);
         const data = await res.json();
         if (data.tag_name !== BUILD_TAG) {
           showUpdateModal(data.tag_name, data.body, data.assets);
@@ -1184,18 +1210,25 @@
     if (!Array.isArray(state.rituals)) state.rituals = [];
     if (typeof state.weekFocus !== 'object' || state.weekFocus === null || Array.isArray(state.weekFocus)) state.weekFocus = {};
 
+    // FIX: маппинг state.motherName -> LS.mother, чтобы имя мамы реально сохранялось
     function save(k) {
+      const lsKey = (k === 'motherName') ? LS.mother : LS[k];
+      if (lsKey === undefined) { console.warn('save: неизвестный ключ', k); return; }
       const v = state[k];
-      if (typeof v === 'string') localStorage.setItem(LS[k], v);
-      else localStorage.setItem(LS[k], JSON.stringify(v));
+      if (typeof v === 'string') localStorage.setItem(lsKey, v);
+      else localStorage.setItem(lsKey, JSON.stringify(v));
     }
 
     /* ============ НЕДЕЛЯ ============ */
+    // FIX: считается через UTC, устойчиво к DST
     function getWeekNum(dateStr) {
       if (!state.birth) return 1;
       const b = new Date(state.birth + 'T00:00:00');
       const d = new Date(dateStr + 'T00:00:00');
-      const diff = Math.floor((d - b) / 86400000);
+      if (isNaN(b.getTime()) || isNaN(d.getTime())) return 1;
+      const bMs = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate());
+      const dMs = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+      const diff = Math.round((dMs - bMs) / 86400000);
       return Math.max(1, Math.floor(diff / 7) + 1);
     }
     function getMonday(dateStr) {
@@ -1204,6 +1237,14 @@
       const diff = (dow === 0) ? -6 : (1 - dow);
       d.setDate(d.getDate() + diff);
       return todayStr(d);
+    }
+
+    // FIX: ключ периода для ритуалов (день / неделя / месяц)
+    function getPeriodKey(period) {
+      const t = todayStr();
+      if (period === 'weekly') return getMonday(t);
+      if (period === 'monthly') return t.slice(0, 7);
+      return t;
     }
 
     function getFocus(dateStr) {
@@ -1216,10 +1257,10 @@
       return { week: wn, t: 'Не задан', e: '📅', d: 'Нажмите ✏️ чтобы указать фокус' };
     }
 
+    // FIX: больше не пишет в localStorage прямо из рендера
     function ensureTasksFor(date) {
       if (!state.tasks[date]) {
         state.tasks[date] = [];
-        save('tasks');
       }
     }
 
@@ -1237,6 +1278,7 @@
     }
 
     /* ============ ПАРСЕР TXT ============ */
+    // FIX: round-trip проверка даты — 31.02 больше не пролезет
     function parsePlanText(text) {
       const map = {}, weekFocus = {}, errors = [];
       const lines = String(text || '').split(/\r?\n/);
@@ -1258,9 +1300,17 @@
         if (!m) { errors.push({ line: idx + 1, text: raw }); return; }
         let [, d, mo, y, rest] = m;
         if (y.length === 2) y = '20' + y;
-        const dd = String(+d).padStart(2, '0');
-        const mm = String(+mo).padStart(2, '0');
-        if (+dd < 1 || +dd > 31 || +mm < 1 || +mm > 12) { errors.push({ line: idx + 1, text: raw }); return; }
+        const dNum = +d, moNum = +mo, yNum = +y;
+        if (dNum < 1 || dNum > 31 || moNum < 1 || moNum > 12) {
+          errors.push({ line: idx + 1, text: raw }); return;
+        }
+        // Ключевая проверка: реальная календарная дата
+        const probe = new Date(yNum, moNum - 1, dNum);
+        if (probe.getFullYear() !== yNum || probe.getMonth() !== moNum - 1 || probe.getDate() !== dNum) {
+          errors.push({ line: idx + 1, text: raw }); return;
+        }
+        const dd = String(dNum).padStart(2, '0');
+        const mm = String(moNum).padStart(2, '0');
         const date = `${y}-${mm}-${dd}`;
         let name = rest.trim(), target = '—';
         const pm = rest.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
@@ -1286,7 +1336,8 @@
 
       const img = $('#avatarImg'), emoji = $('#avatarEmoji');
       if (state.avatar) {
-        if (img.getAttribute('src') !== getSrc(state.avatar)) img.src = getSrc(state.avatar);
+        const src = getSrc(state.avatar);
+        if (img.getAttribute('src') !== src) img.src = src;
         img.style.display = 'block';
         emoji.style.display = 'none';
       } else {
@@ -1485,10 +1536,11 @@
 
     /* ============ РИТУАЛЫ ============ */
     function renderRituals() {
-      const today = todayStr();
       let html = '';
       state.rituals.forEach(r => {
-        const done = (r.completions && r.completions[today]) || {};
+        // FIX: прогресс берётся по ключу периода (день/неделя/месяц)
+        const periodKey = getPeriodKey(r.period);
+        const done = (r.completions && r.completions[periodKey]) || {};
         const doneCount = Object.values(done).filter(Boolean).length;
         const total = r.steps.length;
         const all = total > 0 && doneCount === total;
@@ -1577,7 +1629,13 @@
         render();
         window.scrollTo({ top: 0, behavior: 'smooth' });
       },
-      changeDate(d) { state.selectedDate = d; state.addTaskOpen = false; render(); },
+      // FIX: пустая дата не ломает состояние
+      changeDate(d) {
+        if (!d) return;
+        state.selectedDate = d;
+        state.addTaskOpen = false;
+        render();
+      },
       editFocus() {
         const current = getFocus(state.selectedDate).t;
         const val = prompt('Введите фокус недели:', current === 'Не задан' ? '' : current);
@@ -1588,10 +1646,14 @@
       },
 
       /* ---- задачи ---- */
+      // FIX: предупреждение при снятии отметки у задачи в прошлом
       toggleDone(id) {
         const list = state.tasks[state.selectedDate]; if (!list) return;
         const t = list.find(x => x.id === id);
         if (!t || t.status === 'failed') return;
+        if (t.status === 'done' && state.selectedDate < todayStr()) {
+          if (!confirm('Задача в прошлом. Снять отметку? Она будет засчитана как невыполненная.')) return;
+        }
         t.status = t.status === 'done' ? null : 'done';
         save('tasks'); render();
       },
@@ -1651,6 +1713,7 @@
           App.previewImport();
           toast('Файл загружен');
         };
+        fr.onerror = () => toast('Не удалось прочитать файл');
         fr.readAsText(f, 'UTF-8');
         input.value = '';
       },
@@ -1797,20 +1860,21 @@
       },
 
       /* ---- ритуалы ---- */
+      // FIX: используем getPeriodKey
       toggleStep(rid, sid) {
         const r = state.rituals.find(x => x.id === rid); if (!r) return;
-        const today = todayStr();
+        const periodKey = getPeriodKey(r.period);
         if (!r.completions) r.completions = {};
-        if (!r.completions[today]) r.completions[today] = {};
-        r.completions[today][sid] = !r.completions[today][sid];
+        if (!r.completions[periodKey]) r.completions[periodKey] = {};
+        r.completions[periodKey][sid] = !r.completions[periodKey][sid];
         save('rituals'); render();
       },
       checkAllRitual(rid) {
         const r = state.rituals.find(x => x.id === rid); if (!r) return;
-        const today = todayStr();
+        const periodKey = getPeriodKey(r.period);
         if (!r.completions) r.completions = {};
-        if (!r.completions[today]) r.completions[today] = {};
-        r.steps.forEach(s => { r.completions[today][s.id] = true; });
+        if (!r.completions[periodKey]) r.completions[periodKey] = {};
+        r.steps.forEach(s => { r.completions[periodKey][s.id] = true; });
         save('rituals'); render();
       },
       addStep(rid) {
@@ -1881,15 +1945,18 @@
         state.motherName = $('#setMother').value.trim();
         state.birth = $('#setBirth').value;
         state.avatar = state._newAvatar || '';
+        // FIX: save('motherName') теперь маппится на LS.mother внутри save()
         save('name'); save('motherName'); save('birth'); save('avatar');
         localStorage.setItem(LS.onboarded, '1');
         $('#settingsModal').classList.remove('show');
         render();
         toast('Сохранено ✨');
       },
+      // FIX: чистим также метку проверки обновлений
       resetAll() {
         if (!confirm('Удалить все данные приложения? Это необратимо.')) return;
         Object.values(LS).forEach(k => localStorage.removeItem(k));
+        localStorage.removeItem('ld_last_update_check');
         location.reload();
       }
     };
