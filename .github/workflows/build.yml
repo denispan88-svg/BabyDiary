@@ -62,7 +62,7 @@ jobs:
       - name: Install dependencies
         run: |
           npm init -y
-          npm install @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7 @capacitor/filesystem@7 @capacitor/camera@7 @capacitor/assets@latest @capawesome/capacitor-file-picker@7 @capacitor-community/file-opener@7
+          npm install @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7 @capacitor/filesystem@7 @capacitor/camera@7 @capacitor/local-notifications@7 @capacitor/assets@latest @capawesome/capacitor-file-picker@7 @capacitor-community/file-opener@7
 
       - name: Init Capacitor
         run: npx cap init "Дневник развития" "com.babydiary.app" --web-dir=www
@@ -72,6 +72,11 @@ jobs:
 
       - name: Generate app icons and splash screens
         run: npx @capacitor/assets generate --android
+      
+      - name: Add exact alarm permission
+        run: |
+          sed -i '/<application/i\    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />' android/app/src/main/AndroidManifest.xml
+
 
       - name: Fix Kotlin version conflict
         run: |

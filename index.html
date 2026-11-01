@@ -38,7 +38,7 @@
     </div>
   </nav>
 
-  <!-- Модалки для Мамы -->
+  <!-- Модалка дела мамы -->
   <div class="modal" id="momTaskModal">
     <div class="modal-inner">
       <h3 id="momTaskModalTitle">Новое дело</h3>
@@ -53,6 +53,17 @@
         <span style="font-size:18px; font-weight:bold; color:var(--text-light);">:</span>
         <select id="momTaskMinute" style="flex:1; text-align:center; font-weight:600; font-size:16px;"></select>
       </div>
+
+      <label class="field-label">Напомнить</label>
+      <select id="momTaskRemind" style="margin-bottom:8px;">
+        <option value="0">Не напоминать</option>
+        <option value="5">За 5 минут</option>
+        <option value="15">За 15 минут</option>
+        <option value="30">За 30 минут</option>
+        <option value="60">За 1 час</option>
+        <option value="120">За 2 часа</option>
+        <option value="1440">За 1 день</option>
+      </select>
 
       <div class="row" style="justify-content:space-between; margin-top:16px;">
         <button class="btn btn-mini btn-ghost" onclick="document.getElementById('momTaskModal').classList.remove('show')">Отмена</button>
@@ -85,6 +96,7 @@
     </div>
   </div>
 
+  <!-- Остальные модалки (настройки, статистика, обновление, импорт, prompt, редактирование заметки) остаются без изменений -->
   <div class="modal" id="settingsModal">
     <div class="modal-inner">
       <h3 id="settingsTitle">Настройки</h3>
@@ -205,7 +217,7 @@
   <input type="file" id="_achVideoFallbackInput" accept="video/*" style="display:none" onchange="App._addAchVideoFallback(this)">
 
   <script>
-    const APP_VERSION = '1.0.8.3';
+    const APP_VERSION = '1.1.0.0';
     const BUILD_TAG = 'local';
     const GITHUB_REPO = 'denispan88-svg/BabyDiary';
 
@@ -227,6 +239,7 @@
       return uri;
     }
 
+    /* ============ КАМЕРА / ФАЙЛЫ (без изменений) ============ */
     async function pickPhotoNative() {
       if (!window.Capacitor?.Plugins?.Camera) return { error: 'Плагин Camera недоступен.' };
       try {
@@ -323,6 +336,7 @@
       };
     }
 
+    /* ============ ОБНОВЛЕНИЯ (без изменений) ============ */
     function parseTag(tag) {
       const m = String(tag || '').match(/^v(\d+)\.(\d+)\.(\d+)(?:\.(\d+))?(?:-(\d+))?$/);
       if (!m) return null;
@@ -371,6 +385,7 @@
       document.getElementById('updateModal').classList.add('show');
     }
 
+    /* ============ СОСТОЯНИЕ ============ */
     const LS = {
       name: 'ld_name', mother: 'ld_mother', birth: 'ld_birth', avatar: 'ld_avatar',
       tasks: 'ld_tasks', notes: 'ld_notes', ach: 'ld_ach', rituals: 'ld_rituals',
@@ -400,7 +415,7 @@
       selectedDate: todayStr(),
       activeTab: 'tasks',
       tasksSubTab: 'child',
-      ritualsSubTab: 'daily', // daily, weekly, monthly
+      ritualsSubTab: 'daily',
       addTaskOpen: false,
       pendingPhotos: [],
       _achPhoto: '', _achVideo: null, _newAvatar: undefined, _promptCb: null,
@@ -430,6 +445,7 @@
       }
     }
 
+    /* ============ ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (без изменений) ============ */
     function getWeekNum(dateStr) {
       if (!state.birth) return 1;
       const b = new Date(state.birth + 'T00:00:00');
@@ -505,6 +521,7 @@
       return { map, weekFocus, errors };
     }
 
+    /* ============ РЕНДЕР (без изменений, кроме добавления уведомлений в задачах мамы) ============ */
     function renderHeader() {
       const w = getWeekNum(state.selectedDate);
       const name = state.name || 'Малыш';
@@ -656,10 +673,11 @@
             const bg = urg.bg;
             const color = urg.color;
             const border = urg.border ? `border:${urg.border};` : '';
+            const bell = t.remind && t.remind > 0 ? ' 🔔' : '';
             html += '<div class="mom-task">'
               + '<div class="mom-marker" style="background:'+bg+'; color:'+color+'; '+border+'">'+urg.label+'</div>'
               + '<div class="mom-task-body">'
-              + '<div class="mom-task-title">' + esc(t.title) + '</div>'
+              + '<div class="mom-task-title">' + esc(t.title) + bell + '</div>'
               + (t.time ? '<div class="mom-task-time">⏰ ' + esc(t.time) + '</div>' : '')
               + '</div>'
               + '<div class="mom-task-actions">'
@@ -680,6 +698,7 @@
       return html;
     }
 
+    /* ============ ЗАМЕТКИ, ДОСТИЖЕНИЯ, РИТУАЛЫ, ПРИКОРМ (без изменений) ============ */
     function renderNotes() {
       let html = '<div class="card">'
         + '<div class="card-title">Новая заметка / наблюдение</div>'
@@ -815,7 +834,6 @@
         });
       }
 
-      // Форма создания
       html += '<div class="card">'
         + '<div class="card-title">Создать ритуал</div>'
         + '<input type="text" id="ritName" placeholder="Название" style="margin-bottom:8px">'
@@ -853,6 +871,82 @@
       }
     }
 
+    /* ============ УВЕДОМЛЕНИЯ ============ */
+    async function ensureNotificationPermission() {
+      if (!window.Capacitor?.Plugins?.LocalNotifications) {
+        console.warn('LocalNotifications plugin not available');
+        return false;
+      }
+      try {
+        const perm = await Capacitor.Plugins.LocalNotifications.checkPermissions();
+        if (perm.display !== 'granted') {
+          const req = await Capacitor.Plugins.LocalNotifications.requestPermissions();
+          if (req.display !== 'granted') {
+            toast('Разрешение на уведомления не выдано');
+            return false;
+          }
+        }
+        return true;
+      } catch (e) {
+        console.warn('Notification permission error', e);
+        return false;
+      }
+    }
+
+    async function scheduleMomTaskNotification(task) {
+      if (!window.Capacitor?.Plugins?.LocalNotifications) return;
+      if (!task.remind || task.remind <= 0) return;
+      
+      const granted = await ensureNotificationPermission();
+      if (!granted) return;
+
+      // Отменяем старое уведомление, если было
+      if (task.notifId) {
+        try {
+          await Capacitor.Plugins.LocalNotifications.cancel({ notifications: [{ id: task.notifId }] });
+        } catch (e) { /* ignore */ }
+      }
+
+      const [year, month, day] = task.date.split('-').map(Number);
+      const [hour, minute] = (task.time || '12:00').split(':').map(Number);
+      const taskDate = new Date(year, month - 1, day, hour, minute);
+      const reminderDate = new Date(taskDate.getTime() - task.remind * 60 * 1000);
+      
+      if (reminderDate.getTime() <= Date.now()) {
+        toast('Время напоминания уже прошло');
+        return;
+      }
+
+      const notifId = Math.floor(Math.random() * 2147483647);
+      try {
+        await Capacitor.Plugins.LocalNotifications.schedule({
+          notifications: [{
+            id: notifId,
+            title: '📌 ' + task.title,
+            body: `Напоминание о деле в ${task.time || 'назначенное время'}`,
+            schedule: { at: reminderDate, allowWhileIdle: true },
+            sound: null,
+            smallIcon: 'ic_stat_icon_config_sample',
+            iconColor: '#f7a5c2'
+          }]
+        });
+        task.notifId = notifId;
+        toast('Напоминание установлено 🔔');
+      } catch (e) {
+        console.warn('Schedule notification failed', e);
+        toast('Не удалось установить напоминание');
+      }
+    }
+
+    async function cancelMomTaskNotification(task) {
+      if (!task.notifId || !window.Capacitor?.Plugins?.LocalNotifications) return;
+      try {
+        await Capacitor.Plugins.LocalNotifications.cancel({ notifications: [{ id: task.notifId }] });
+        task.notifId = null;
+      } catch (e) { /* ignore */ }
+    }
+
+    /* ============ API ============ */
     function populateTimeSelects() {
       const hSel = document.getElementById('momTaskHour');
       const mSel = document.getElementById('momTaskMinute');
@@ -987,7 +1081,7 @@
         toast(msg);
       },
 
-      /* ---- МАМИНЫ ДЕЛА ---- */
+      /* ---- ДЕЛА МАМЫ ---- */
       openMomTaskModal(id) {
         populateTimeSelects();
         state._editingMomTaskId = id || null;
@@ -1000,6 +1094,7 @@
             const [h, m] = (t.time || '12:00').split(':');
             $('#momTaskHour').value = h || '12';
             $('#momTaskMinute').value = m || '00';
+            $('#momTaskRemind').value = t.remind || '0';
           }
         } else {
           $('#momTaskModalTitle').textContent = 'Новое дело';
@@ -1008,23 +1103,31 @@
           const now = new Date();
           $('#momTaskHour').value = String(now.getHours()).padStart(2, '0');
           $('#momTaskMinute').value = String(now.getMinutes()).padStart(2, '0');
+          $('#momTaskRemind').value = '0';
         }
         $('#momTaskModal').classList.add('show');
       },
-      saveMomTask() {
+      async saveMomTask() {
         const title = $('#momTaskTitle').value.trim();
         const date = $('#momTaskDate').value;
         const h = $('#momTaskHour').value;
         const m = $('#momTaskMinute').value;
         const time = h + ':' + m;
+        const remind = parseInt($('#momTaskRemind').value) || 0;
 
         if (!title || !date) { toast('Заполните название и дату'); return; }
         
         if (state._editingMomTaskId) {
           const t = state.momTasks.find(x => x.id === state._editingMomTaskId);
-          if (t) { t.title = title; t.date = date; t.time = time; }
+          if (t) {
+            await cancelMomTaskNotification(t);
+            t.title = title; t.date = date; t.time = time; t.remind = remind;
+            await scheduleMomTaskNotification(t);
+          }
         } else {
-          state.momTasks.push({ id: uid(), title, date, time });
+          const newTask = { id: uid(), title, date, time, remind };
+          state.momTasks.push(newTask);
+          await scheduleMomTaskNotification(newTask);
         }
         save('momTasks');
         $('#momTaskModal').classList.remove('show');
@@ -1042,10 +1145,12 @@
         $('#momActionModal').classList.remove('show');
 
         if (action === 'delete') {
+          await cancelMomTaskNotification(t);
           state.momTasks = state.momTasks.filter(x => x.id !== t.id);
           save('momTasks'); render(); toast('Удалено');
         } 
         else if (action === 'archive') {
+          await cancelMomTaskNotification(t);
           state.momTasks = state.momTasks.filter(x => x.id !== t.id);
           state.momArchive.push({ ...t, archivedAt: Date.now() });
           save('momTasks'); save('momArchive'); render(); toast('В архиве 📁');
@@ -1054,7 +1159,9 @@
           const ans = await App.askText('Через сколько дней повторить?', '7');
           if (ans !== null && !isNaN(parseInt(ans))) {
             const days = parseInt(ans);
+            await cancelMomTaskNotification(t);
             t.date = addDays(t.date, days);
+            await scheduleMomTaskNotification(t);
             save('momTasks'); render(); toast(`Перенесено на ${days} дн. вперед`);
           }
         }
@@ -1074,7 +1181,7 @@
         $('#momArchiveList').innerHTML = html;
         $('#momArchiveModal').classList.add('show');
       },
-      restoreMomTask(id) {
+      async restoreMomTask(id) {
         const t = state.momArchive.find(x => x.id === id);
         if (!t) return;
         state.momArchive = state.momArchive.filter(x => x.id !== id);
@@ -1083,10 +1190,12 @@
         App.openMomTaskModal();
         $('#momTaskTitle').value = t.title;
         $('#momTaskDate').value = todayStr();
+        $('#momTaskRemind').value = t.remind || '0';
         state._editingMomTaskId = null;
         toast('Укажите новую дату');
       },
 
+      /* ---- СТАТИСТИКА (без изменений) ---- */
       openStats() {
         const stats = getWeekStats(state.selectedDate);
         const total = stats.total || 1;
@@ -1120,6 +1229,7 @@
         $('#statsModal').classList.add('show');
       },
 
+      /* ---- ОСТАЛЬНЫЕ ФУНКЦИИ (без изменений) ---- */
       async addNotePhoto() {
         const picked = await pickPhotoNative(); if (picked.cancelled) return; if (picked.error) return alert(picked.error);
         const uri = await persistPhoto(picked.path); if (uri) { state.pendingPhotos.push(uri); renderNotePhotos(); }
