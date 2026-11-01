@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- Native Android app (Capacitor). Not a PWA. -->
 <html lang="ru">
 
 <head>
@@ -230,6 +231,11 @@
       font-weight: 600;
       cursor: pointer;
       transition: .15s
+    }
+
+    .btn:disabled {
+      opacity: .6;
+      cursor: default
     }
 
     .btn-primary {
@@ -659,7 +665,6 @@
       margin-top: 10px;
     }
 
-    /* NEW: карточка видео-референса в достижении */
     .video-thumb {
       position: relative;
       display: flex;
@@ -1011,9 +1016,16 @@
       <input type="date" id="setBirth" style="margin-bottom:14px">
       <p class="hint">От даты рождения рассчитывается номер недели.</p>
 
+      <label class="field-label" style="margin-top:14px">Версия приложения</label>
+      <p class="hint" id="buildInfo" style="margin-bottom:0">—</p>
+
       <div class="row" style="justify-content:space-between;margin-top:16px">
         <button class="btn btn-mini btn-ghost" onclick="App.resetAll()">🗑 Сбросить всё</button>
         <button class="btn btn-primary" onclick="App.saveSettings()">Сохранить</button>
+      </div>
+      <div class="row" style="justify-content:center;margin-top:12px">
+        <button class="btn btn-mini btn-ghost" id="checkUpdatesBtn"
+          onclick="App.manualCheckUpdates()">🔄 Проверить обновления</button>
       </div>
     </div>
   </div>
@@ -1022,7 +1034,7 @@
     <div class="modal-inner">
       <h3>🚀 Доступно обновление!</h3>
       <p style="font-size:13px;color:#8d8091;margin-bottom:10px">
-        Текущая версия: <b id="currentTag"></b><br>
+        Установлено: <b id="currentTag"></b><br>
         Новая версия: <b id="newTag" style="color:var(--ok)"></b>
       </p>
       <div id="updateNotes"
@@ -1076,9 +1088,13 @@
     onchange="App._addAchVideoFallback(this)">
 
   <script>
-    /* ============ НАСТРОЙКИ ОБНОВЛЕНИЙ ============ */
-    const APP_VERSION = '1.0.3';
-    const BUILD_TAG = 'local';
+    /* ============================================================
+       NATIVE ANDROID APP (CAPACITOR) — NOT A PWA.
+       Проверка обновлений — только вручную, по кнопке в настройках.
+       Никаких фоновых запросов, троттлинга и visibilitychange.
+       ============================================================ */
+    const APP_VERSION = '1.0.4'; // читается в CI для тега
+    const BUILD_TAG = 'local';   // ← CI инжектит v${APP_VERSION}-${run_number}
     const GITHUB_REPO = 'denispan88-svg/BabyDiary';
 
     /* ============ УТИЛИТЫ ============ */
@@ -1093,7 +1109,7 @@
     function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 2200) }
     function openImg(src) { $('#lbImg').src = src; $('#lightbox').classList.add('show') }
 
-    /* ============ РАБОТА С ФАЙЛАМИ ============ */
+    /* ============ РАБОТА С ФАЙЛАМИ (Capacitor) ============ */
     function getSrc(uri) {
       if (!uri) return '';
       if (uri.startsWith('data:') || uri.startsWith('http://') || uri.startsWith('https://') || uri.startsWith('blob:')) {
@@ -1124,7 +1140,6 @@
       })
     }
 
-    // Копирование файла в приватную папку приложения (используется только для фото)
     async function saveMediaFile(file, isVideo) {
       if (!file) return null;
       if (isVideo && file.size > 100 * 1024 * 1024) {
@@ -1165,7 +1180,6 @@
       }
     }
 
-    // NEW: получить URI видео из галереи БЕЗ копирования в приложение
     async function pickVideoReference() {
       if (!window.Capacitor?.Plugins?.FilePicker) {
         return { fallback: true };
@@ -1186,7 +1200,6 @@
       }
     }
 
-    // NEW: открыть видео — через системный плеер для URI, или in-app для data:
     async function openVideoSystem(uri) {
       if (!uri) return;
       if (uri.startsWith('data:') || uri.startsWith('blob:')) {
@@ -1206,7 +1219,6 @@
           return;
         }
       }
-      // На случай отсутствия плагина — fallback
       showVideoInApp(uri);
     }
 
@@ -1223,36 +1235,70 @@
       };
     }
 
-    /* ============ ПРОВЕРКА ОБНОВЛЕНИЙ ============ */
-    async function checkForUpdates(force = false) {
-      if (BUILD_TAG === 'local') return;
-      const lastCheck = localStorage.getItem('ld_last_update_check');
-      const now = Date.now();
-      if (!force && lastCheck && (now - lastCheck < 12 * 60 * 60 * 1000)) return;
+    /* ============ ПРОВЕРКА ОБНОВЛЕНИЙ (только вручную) ============ */
+    function parseTag(tag) {
+      const m = String(tag || '').match(/^v(\d+)\.(\d+)\.(\d+)(?:-(\d+))?$/);
+      if (!m) return null;
+      return { major: +m[1], minor: +m[2], patch: +m[3], build: +(m[4] || 0) };
+    }
 
+    function isNewer(a, b) {
+      if (!a || !b) return false;
+      if (a.major !== b.major) return a.major > b.major;
+      if (a.minor !== b.minor) return a.minor > b.minor;
+      if (a.patch !== b.patch) return a.patch > b.patch;
+      return a.build > b.build;
+    }
+
+    async function checkForUpdates() {
+      if (BUILD_TAG === 'local') {
+        toast('Локальная сборка — проверка недоступна');
+        return;
+      }
       try {
         const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest?t=${Date.now()}`, {
-          headers: { 'Accept': 'application/vnd.github.v3+json' }
+          headers: {
+            'Accept': 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28'
+          },
+          cache: 'no-store'
         });
-        if (!res.ok) return;
-        localStorage.setItem('ld_last_update_check', now);
-        const data = await res.json();
-        if (data.tag_name !== BUILD_TAG) {
-          showUpdateModal(data.tag_name, data.body, data.assets);
+        if (!res.ok) {
+          toast('Не удалось проверить: HTTP ' + res.status);
+          return;
         }
-      } catch (e) { console.log('Update check failed:', e); }
+        const data = await res.json();
+        const remote = parseTag(data.tag_name);
+        const local = parseTag(BUILD_TAG);
+        if (isNewer(remote, local)) {
+          showUpdateModal(data.tag_name, data.body, data.assets);
+        } else {
+          toast('У вас последняя версия ✨');
+        }
+      } catch (e) {
+        console.warn('[update] exception:', e);
+        toast('Ошибка проверки: ' + e.message);
+      }
     }
 
     function showUpdateModal(newTag, notes, assets) {
-      document.getElementById('currentTag').textContent = BUILD_TAG;
-      document.getElementById('newTag').textContent = newTag;
-      document.getElementById('updateNotes').textContent = notes || 'Нет описания изменений.';
-      let downloadUrl = `https://github.com/${GITHUB_REPO}/releases/latest`;
+      const cur = document.getElementById('currentTag');
+      const nw = document.getElementById('newTag');
+      const notesEl = document.getElementById('updateNotes');
+      const link = document.getElementById('updateLink');
+      if (!cur || !nw || !link) return;
+
+      cur.textContent = BUILD_TAG;
+      nw.textContent = newTag;
+      notesEl.textContent = notes || 'Нет описания изменений.';
+
+      let downloadUrl = `https://github.com/${GITHUB_REPO}/releases/tag/${newTag}`;
       if (assets && assets.length > 0) {
-        const apkAsset = assets.find(a => a.name.endsWith('.apk'));
+        const apkAsset = assets.find(a => a.name.toLowerCase().endsWith('.apk'));
         if (apkAsset) downloadUrl = apkAsset.browser_download_url;
       }
-      document.getElementById('updateLink').href = downloadUrl;
+      link.href = downloadUrl;
+
       document.getElementById('updateModal').classList.add('show');
     }
 
@@ -1522,7 +1568,7 @@
       return { done, failed, total };
     }
 
-    /* ============ ЗАМЕТКИ (только фото) ============ */
+    /* ============ ЗАМЕТКИ ============ */
     function renderNotes() {
       let html = '<div class="card">'
         + '<div class="card-title">Новая заметка / наблюдение</div>'
@@ -1611,7 +1657,6 @@
             if (a.video.startsWith('data:') || a.video.startsWith('blob:')) {
               html += '<video src="' + getSrc(a.video) + '" controls></video>';
             } else {
-              // Ссылка на файл в галерее — открываем системным плеером
               html += '<div class="video-thumb" data-uri="' + esc(a.video) + '" '
                 + 'onclick="App.openVideoSystem(this.dataset.uri)">'
                 + '<div class="video-thumb-icon">▶</div>'
@@ -1916,7 +1961,6 @@
         }
         input.value = '';
       },
-      // NEW: видео через путь — без копирования
       async addAchVideo() {
         const picked = await pickVideoReference();
         if (picked.cancelled) return;
@@ -2037,6 +2081,8 @@
         $('#setBirth').value = state.birth || '';
         state._newAvatar = state.avatar || '';
         App._renderAvatarPreview();
+        const info = $('#buildInfo');
+        if (info) info.textContent = 'Сборка: ' + BUILD_TAG;
         $('#settingsTitle').textContent = firstTime ? 'Добро пожаловать! 👋' : 'Настройки';
         $('#settingsModal').classList.add('show');
       },
@@ -2054,8 +2100,23 @@
       resetAll() {
         if (!confirm('Удалить все данные приложения? Это необратимо.')) return;
         Object.values(LS).forEach(k => localStorage.removeItem(k));
-        localStorage.removeItem('ld_last_update_check');
         location.reload();
+      },
+
+      /* ---- ОБНОВЛЕНИЯ (по кнопке) ---- */
+      async manualCheckUpdates() {
+        const btn = document.getElementById('checkUpdatesBtn');
+        if (!btn) { await checkForUpdates(); return; }
+        if (btn.disabled) return;
+        const original = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = '⏳ Проверяю…';
+        try {
+          await checkForUpdates();
+        } finally {
+          btn.disabled = false;
+          btn.textContent = original;
+        }
       }
     };
     window.App = App;
@@ -2138,7 +2199,7 @@
         setTimeout(() => App.openSettings(true), 300);
       }
 
-      setTimeout(() => checkForUpdates(false), 3000);
+      // Никаких авто-проверок обновлений. Только по кнопке в настройках.
     })();
   </script>
 </body>

@@ -27,27 +27,37 @@ jobs:
           distribution: "temurin"
           java-version: "21"
 
+      - name: Read APP_VERSION from index.html
+        id: ver
+        run: |
+          V=$(sed -n "s/.*const APP_VERSION = '\([^']*\)';.*/\1/p" index.html | head -1)
+          if [ -z "$V" ]; then
+            echo "::error::Не удалось прочитать APP_VERSION из index.html"
+            exit 1
+          fi
+          echo "version=$V" >> $GITHUB_OUTPUT
+          echo "Прочитанная версия: $V"
+
+      - name: Inject build tag
+        run: |
+          TAG="v${{ steps.ver.outputs.version }}-${{ github.run_number }}"
+          sed -i "s/const BUILD_TAG = '.*';/const BUILD_TAG = '$TAG';/" index.html
+          if grep -q "const BUILD_TAG = 'local';" index.html; then
+            echo "::error::Инъекция BUILD_TAG не сработала — осталось 'local'"
+            exit 1
+          fi
+          echo "Внедрён тег сборки: $TAG"
+          grep "const BUILD_TAG" index.html
+
       - name: Prepare web directory
         run: |
           mkdir -p www
           cp index.html www/
 
-      - name: Read version from index.html
-        id: ver
-        run: |
-          V=$(grep -oP "APP_VERSION\s*=\s*'\K[^']+" index.html | head -1)
-          echo "version=$V" >> $GITHUB_OUTPUT
-
-      - name: Inject Build Tag
-        run: |
-          TAG="v${{ steps.ver.outputs.version }}-${{ github.run_number }}"
-          sed -i "s/const BUILD_TAG = '.*';/const BUILD_TAG = '$TAG';/" www/index.html
-          echo "Внедрен тег сборки: $TAG"
-
       - name: Install dependencies
         run: |
           npm init -y
-          npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/preferences @capacitor/app @capacitor/filesystem @capacitor/assets @capawesome/capacitor-file-picker @capacitor-community/file-opener
+          npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/filesystem @capacitor/assets @capawesome/capacitor-file-picker @capacitor-community/file-opener
 
       - name: Init Capacitor
         run: npx cap init "Дневник развития" "com.babydiary.app" --web-dir=www
