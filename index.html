@@ -1006,7 +1006,7 @@
       </div>
       <input type="file" id="avatarFile" accept="image/*" style="display:none" onchange="App.loadAvatar(this)">
       <div class="row" style="justify-content:center;gap:8px;margin:10px 0 16px">
-        <button class="btn btn-mini btn-ghost" onclick="document.getElementById('avatarFile').click()">📷 Фото</button>
+        <button class="btn btn-mini btn-ghost" onclick="App.pickAvatar()">📷 Фото</button>
         <button class="btn btn-mini btn-ghost" onclick="App.clearAvatar()">🗑 Убрать</button>
       </div>
 
@@ -1111,10 +1111,13 @@
     /* ============================================================
        NATIVE ANDROID APP (CAPACITOR) — NOT A PWA.
        Проверка обновлений — только вручную, по кнопке в настройках.
-       v1.0.7: фикс кнопки ✏️ «Фокус недели» (декоративный ::before
-       перехватывал тапы).
+       v1.0.8:
+         - importImageToApp: copy() с toDirectory + fallback read+write
+         - кнопка "📷 Фото" в настройках → нативный FilePicker
+         - _addNotePhotoFallback сообщает, если фото не прочитались
+         - фикс кнопки ✏️ «Фокус недели» (сохранён из 1.0.7)
        ============================================================ */
-    const APP_VERSION = '1.0.5';
+    const APP_VERSION = '1.0.8';
     const BUILD_TAG = 'local';   // ← CI инжектит v${APP_VERSION}-${run_number}
     const GITHUB_REPO = 'denispan88-svg/BabyDiary';
 
@@ -1187,27 +1190,49 @@
       }
     }
 
-    // Копирует content:// в приватную папку DATA, возвращает постоянный file:// URI.
+    // Копирует content:// в приватную папку DATA.
+    // Вариант 1: Filesystem.copy с toDirectory.
+    // Вариант 2: readFile + writeFile(encoding: base64) — безопасно по памяти для фото.
+    // Вариант 3: сырой content:// (сработает до перезапуска).
     async function importImageToApp(uri) {
       if (!uri) return null;
       if (uri.startsWith('file://') || uri.startsWith('data:') || uri.startsWith('http')) return uri;
-      if (window.Capacitor?.Plugins?.Filesystem) {
-        const m = uri.match(/\.(jpe?g|png|webp|heic|heif|gif)/i);
-        const ext = m ? m[1].toLowerCase() : 'jpg';
-        const fileName = 'photo_' + Date.now() + '_' + Math.floor(Math.random() * 1000) + '.' + ext;
-        try {
-          await Capacitor.Plugins.Filesystem.copy({
-            from: uri,
-            to: fileName,
-            directory: 'DATA'
-          });
-          const info = await Capacitor.Plugins.Filesystem.getUri({ path: fileName, directory: 'DATA' });
-          console.log('[photo] copied to app data:', info.uri);
-          return info.uri;
-        } catch (e) {
-          console.warn('[photo] copy from content:// failed, storing raw URI:', e);
-        }
+      if (!window.Capacitor?.Plugins?.Filesystem) return uri;
+
+      const m = uri.match(/\.(jpe?g|png|webp|heic|heif|gif)/i);
+      const ext = m ? m[1].toLowerCase() : 'jpg';
+      const fileName = 'photo_' + Date.now() + '_' + Math.floor(Math.random() * 1000) + '.' + ext;
+
+      // 1-я попытка: copy
+      try {
+        await Capacitor.Plugins.Filesystem.copy({
+          from: uri,
+          to: fileName,
+          toDirectory: 'DATA'
+        });
+        const info = await Capacitor.Plugins.Filesystem.getUri({ path: fileName, directory: 'DATA' });
+        console.log('[photo] copied via copy():', info.uri);
+        return info.uri;
+      } catch (e) {
+        console.warn('[photo] copy() failed, trying read+write:', e);
       }
+
+      // 2-я попытка: readFile + writeFile (base64)
+      try {
+        const { data } = await Capacitor.Plugins.Filesystem.readFile({ path: uri });
+        await Capacitor.Plugins.Filesystem.writeFile({
+          path: fileName,
+          data: data,
+          directory: 'DATA',
+          encoding: 'base64'
+        });
+        const info = await Capacitor.Plugins.Filesystem.getUri({ path: fileName, directory: 'DATA' });
+        console.log('[photo] copied via read+write:', info.uri);
+        return info.uri;
+      } catch (e2) {
+        console.warn('[photo] read+write also failed, storing raw URI:', e2);
+      }
+
       return uri;
     }
 
@@ -2025,10 +2050,12 @@
       },
       async _addNotePhotoFallback(input) {
         const files = [...input.files].slice(0, 5);
+        let added = 0;
         for (const f of files) {
           const data = await compressImage(f);
-          if (data) state.pendingPhotos.push(data);
+          if (data) { state.pendingPhotos.push(data); added++; }
         }
+        if (files.length && !added) toast('Не удалось прочитать фото');
         input.value = ''; renderNotePhotos();
       },
       saveNote() {
