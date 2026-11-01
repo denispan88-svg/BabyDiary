@@ -188,7 +188,8 @@
       width: 150px;
       height: 150px;
       background: radial-gradient(circle, rgba(255, 255, 255, .75), transparent 70%);
-      border-radius: 50%
+      border-radius: 50%;
+      pointer-events: none; /* FIX: блик не перехватывает тапы по кнопке ✏️ */
     }
 
     .fw {
@@ -200,7 +201,9 @@
       margin-bottom: 4px;
       display: flex;
       justify-content: space-between;
-      align-items: center
+      align-items: center;
+      position: relative; /* FIX */
+      z-index: 1;         /* FIX */
     }
 
     .ft {
@@ -620,7 +623,8 @@
       border-radius: 11px;
       font-size: 13px;
       font-weight: 600;
-      cursor: pointer
+      cursor: pointer;
+      border: none;
     }
 
     .up-label input {
@@ -1082,18 +1086,35 @@
     </div>
   </div>
 
+  <div class="modal" id="promptModal">
+    <div class="modal-inner">
+      <h3 id="promptTitle">Введите значение</h3>
+      <input type="text" id="promptInput" style="margin-bottom:14px"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();App._promptResolve(this.value);}">
+      <div class="row" style="justify-content:space-between">
+        <button class="btn btn-mini btn-ghost" onclick="App._promptResolve(null)">Отмена</button>
+        <button class="btn btn-primary" onclick="App._promptResolve(document.getElementById('promptInput').value)">OK</button>
+      </div>
+    </div>
+  </div>
+
   <div id="lightbox" onclick="this.classList.remove('show')"><img id="lbImg" src=""></div>
   <div class="toast" id="toast"></div>
   <input type="file" id="_achVideoFallbackInput" accept="video/*" style="display:none"
     onchange="App._addAchVideoFallback(this)">
+  <input type="file" id="_notePhotoFallbackInput" accept="image/*" multiple style="display:none"
+    onchange="App._addNotePhotoFallback(this)">
+  <input type="file" id="_achPhotoFallbackInput" accept="image/*" style="display:none"
+    onchange="App._addAchPhotoFallback(this)">
 
   <script>
     /* ============================================================
        NATIVE ANDROID APP (CAPACITOR) — NOT A PWA.
        Проверка обновлений — только вручную, по кнопке в настройках.
-       Никаких фоновых запросов, троттлинга и visibilitychange.
+       v1.0.7: фикс кнопки ✏️ «Фокус недели» (декоративный ::before
+       перехватывал тапы).
        ============================================================ */
-    const APP_VERSION = '1.0.4'; // читается в CI для тега
+    const APP_VERSION = '1.0.5';
     const BUILD_TAG = 'local';   // ← CI инжектит v${APP_VERSION}-${run_number}
     const GITHUB_REPO = 'denispan88-svg/BabyDiary';
 
@@ -1115,12 +1136,18 @@
       if (uri.startsWith('data:') || uri.startsWith('http://') || uri.startsWith('https://') || uri.startsWith('blob:')) {
         return uri;
       }
-      if (window.Capacitor && typeof Capacitor.convertFileSrc === 'function') {
-        return Capacitor.convertFileSrc(uri);
+      if (window.Capacitor) {
+        if (uri.startsWith('content://')) {
+          return 'http://localhost/_capacitor_content_/' + encodeURIComponent(uri);
+        }
+        if (typeof Capacitor.convertFileSrc === 'function') {
+          return Capacitor.convertFileSrc(uri);
+        }
       }
       return uri;
     }
 
+    // Сжатие — используется ТОЛЬКО как fallback, когда FilePicker недоступен.
     function compressImage(file, max = 900) {
       return new Promise(res => {
         const fr = new FileReader();
@@ -1140,6 +1167,72 @@
       })
     }
 
+    // Нативный выбор изображений без чтения содержимого в JS (без OOM).
+    async function pickImagesReference(limit = 1) {
+      if (!window.Capacitor?.Plugins?.FilePicker) {
+        return { fallback: true };
+      }
+      try {
+        const result = await Capacitor.Plugins.FilePicker.pickFiles({
+          types: ['image/*'],
+          limit,
+          readData: false
+        });
+        if (!result.files || !result.files.length) return { cancelled: true };
+        const uris = result.files.map(f => f.uri || f.path).filter(Boolean);
+        if (!uris.length) return { error: 'Не удалось получить пути к файлам' };
+        return { uris };
+      } catch (e) {
+        return { error: e.message || 'Ошибка выбора файла' };
+      }
+    }
+
+    // Копирует content:// в приватную папку DATA, возвращает постоянный file:// URI.
+    async function importImageToApp(uri) {
+      if (!uri) return null;
+      if (uri.startsWith('file://') || uri.startsWith('data:') || uri.startsWith('http')) return uri;
+      if (window.Capacitor?.Plugins?.Filesystem) {
+        const m = uri.match(/\.(jpe?g|png|webp|heic|heif|gif)/i);
+        const ext = m ? m[1].toLowerCase() : 'jpg';
+        const fileName = 'photo_' + Date.now() + '_' + Math.floor(Math.random() * 1000) + '.' + ext;
+        try {
+          await Capacitor.Plugins.Filesystem.copy({
+            from: uri,
+            to: fileName,
+            directory: 'DATA'
+          });
+          const info = await Capacitor.Plugins.Filesystem.getUri({ path: fileName, directory: 'DATA' });
+          console.log('[photo] copied to app data:', info.uri);
+          return info.uri;
+        } catch (e) {
+          console.warn('[photo] copy from content:// failed, storing raw URI:', e);
+        }
+      }
+      return uri;
+    }
+
+    // Видео: возвращает content:// или file:// URI без копирования.
+    async function pickVideoReference() {
+      if (!window.Capacitor?.Plugins?.FilePicker) {
+        return { fallback: true };
+      }
+      try {
+        const result = await Capacitor.Plugins.FilePicker.pickFiles({
+          types: ['video/*'],
+          limit: 1,
+          readData: false
+        });
+        const f = result.files && result.files[0];
+        if (!f) return { cancelled: true };
+        const uri = f.uri || f.path;
+        if (!uri) return { error: 'Не удалось получить путь к файлу' };
+        return { uri };
+      } catch (e) {
+        return { error: e.message || 'Ошибка выбора файла' };
+      }
+    }
+
+    // Fallback для видео (когда нет FilePicker) — сохранение base64 в DATA.
     async function saveMediaFile(file, isVideo) {
       if (!file) return null;
       if (isVideo && file.size > 100 * 1024 * 1024) {
@@ -1177,26 +1270,6 @@
       } catch (e) {
         alert('Ошибка сохранения файла: ' + e.message);
         return null;
-      }
-    }
-
-    async function pickVideoReference() {
-      if (!window.Capacitor?.Plugins?.FilePicker) {
-        return { fallback: true };
-      }
-      try {
-        const result = await Capacitor.Plugins.FilePicker.pickFiles({
-          types: ['video/*'],
-          limit: 1,
-          readData: false
-        });
-        const f = result.files && result.files[0];
-        if (!f) return { cancelled: true };
-        const uri = f.uri || f.path;
-        if (!uri) return { error: 'Не удалось получить путь к файлу' };
-        return { uri };
-      } catch (e) {
-        return { error: e.message || 'Ошибка выбора файла' };
       }
     }
 
@@ -1334,7 +1407,8 @@
       pendingPhotos: [],
       _achPhoto: '',
       _achVideo: null,
-      _newAvatar: undefined
+      _newAvatar: undefined,
+      _promptCb: null
     };
 
     if (typeof state.tasks !== 'object' || state.tasks === null || Array.isArray(state.tasks)) state.tasks = {};
@@ -1347,8 +1421,16 @@
       const lsKey = (k === 'motherName') ? LS.mother : LS[k];
       if (lsKey === undefined) { console.warn('save: неизвестный ключ', k); return; }
       const v = state[k];
-      if (typeof v === 'string') localStorage.setItem(lsKey, v);
-      else localStorage.setItem(lsKey, JSON.stringify(v));
+      try {
+        if (typeof v === 'string') localStorage.setItem(lsKey, v);
+        else localStorage.setItem(lsKey, JSON.stringify(v));
+      } catch (e) {
+        const isQuota = e && (e.name === 'QuotaExceededError' || /quota/i.test(e.message || ''));
+        console.error('save failed', k, e);
+        if (isQuota) {
+          alert('Хранилище заполнено. Удалите старые заметки или достижения с фото, затем повторите.');
+        }
+      }
     }
 
     /* ============ НЕДЕЛЯ ============ */
@@ -1484,7 +1566,9 @@
 
       let html = '';
       html += '<div class="focus-card">'
-        + '<div class="fw">Фокус ' + focus.week + '-й недели <button class="btn btn-mini btn-ghost" style="padding:2px 8px;" onclick="App.editFocus()">✏️</button></div>'
+        + '<div class="fw">Фокус ' + focus.week + '-й недели '
+        + '<button class="btn btn-mini btn-ghost" style="padding:2px 8px; position: relative; z-index: 2;" onclick="App.editFocus()">✏️</button>'
+        + '</div>'
         + '<div class="ft">' + focus.e + ' ' + esc(focus.t) + '</div>'
         + '<div class="fd">' + esc(focus.d) + '</div>'
         + '</div>';
@@ -1575,7 +1659,7 @@
         + '<textarea id="noteText" placeholder="Что заметили?"></textarea>'
         + '<div class="row" style="margin-top:8px"><select id="noteLink"><option value="">— привязать к задаче (необязательно) —</option>' + linkOptions() + '</select></div>'
         + '<div class="row" style="margin-top:8px;align-items:flex-start">'
-        + '<label class="up-label">📷 Фото<input type="file" accept="image/*" multiple onchange="App.addNotePhoto(this)"></label>'
+        + '<button type="button" class="up-label" onclick="App.addNotePhoto()">📷 Фото</button>'
         + '<div class="photo-up" id="notePhotoPreview"></div>'
         + '</div>'
         + '<div class="row" style="justify-content:flex-end;margin-top:10px">'
@@ -1630,8 +1714,8 @@
         + '<input type="datetime-local" id="achDate" value="' + nowStr + '" style="margin-bottom:8px">'
         + '<textarea id="achDesc" placeholder="Описание (необязательно)" style="margin-bottom:8px;min-height:50px;"></textarea>'
         + '<div class="row" style="margin-bottom:8px; gap:8px; flex-wrap:wrap;">'
-        + '<label class="up-label">📷 Фото<input type="file" accept="image/*" onchange="App.addAchPhoto(this)"></label>'
-        + '<button type="button" class="up-label" style="background:var(--purple-soft);color:#7a6ba8;border:none;" onclick="App.addAchVideo()">🎥 Видео</button>'
+        + '<button type="button" class="up-label" onclick="App.addAchPhoto()">📷 Фото</button>'
+        + '<button type="button" class="up-label" style="background:var(--purple-soft);color:#7a6ba8;" onclick="App.addAchVideo()">🎥 Видео</button>'
         + '</div>'
         + '<div class="photo-up" id="achPhotoPreview"></div>'
         + '<div class="row" style="justify-content:flex-end;margin-top:10px">'
@@ -1677,8 +1761,9 @@
       state.rituals.forEach(r => {
         const periodKey = getPeriodKey(r.period);
         const done = (r.completions && r.completions[periodKey]) || {};
-        const doneCount = Object.values(done).filter(Boolean).length;
         const total = r.steps.length;
+        // Считаем ТОЛЬКО по текущим шагам — «мёртвые» id удалённых шагов не учитываются.
+        const doneCount = r.steps.filter(s => done[s.id]).length;
         const all = total > 0 && doneCount === total;
 
         html += '<div class="ritual">'
@@ -1771,13 +1856,13 @@
         state.addTaskOpen = false;
         render();
       },
-      editFocus() {
+      async editFocus() {
         const current = getFocus(state.selectedDate).t;
-        const val = prompt('Введите фокус недели:', current === 'Не задан' ? '' : current);
-        if (val !== null) {
-          state.weekFocus[getMonday(state.selectedDate)] = val.trim();
-          save('weekFocus'); render();
-        }
+        const val = await App.askText('Фокус недели', current === 'Не задан' ? '' : current);
+        if (val === null) return;
+        state.weekFocus[getMonday(state.selectedDate)] = val.trim();
+        save('weekFocus');
+        render();
       },
 
       /* ---- задачи ---- */
@@ -1923,11 +2008,25 @@
         toast(msg);
       },
 
-      /* ---- заметки ---- */
-      async addNotePhoto(input) {
+      /* ---- заметки / фото ---- */
+      async addNotePhoto() {
+        const picked = await pickImagesReference(5);
+        if (picked.cancelled) return;
+        if (picked.uris) {
+          for (const uri of picked.uris) {
+            const finalUri = await importImageToApp(uri);
+            if (finalUri) state.pendingPhotos.push(finalUri);
+          }
+          renderNotePhotos();
+          return;
+        }
+        if (picked.error) { alert(picked.error); return; }
+        if (picked.fallback) document.getElementById('_notePhotoFallbackInput').click();
+      },
+      async _addNotePhotoFallback(input) {
         const files = [...input.files].slice(0, 5);
         for (const f of files) {
-          const data = await saveMediaFile(f, false);
+          const data = await compressImage(f);
           if (data) state.pendingPhotos.push(data);
         }
         input.value = ''; renderNotePhotos();
@@ -1951,14 +2050,22 @@
         save('notes'); render();
       },
 
-      /* ---- достижения ---- */
-      async addAchPhoto(input) {
-        const f = input.files[0]; if (!f) return;
-        const data = await saveMediaFile(f, false);
-        if (data) {
-          state._achPhoto = data;
+      /* ---- достижения / фото / видео ---- */
+      async addAchPhoto() {
+        const picked = await pickImagesReference(1);
+        if (picked.cancelled) return;
+        if (picked.uris && picked.uris.length) {
+          state._achPhoto = await importImageToApp(picked.uris[0]);
           renderAchPreview();
+          return;
         }
+        if (picked.error) { alert(picked.error); return; }
+        if (picked.fallback) document.getElementById('_achPhotoFallbackInput').click();
+      },
+      async _addAchPhotoFallback(input) {
+        const f = input.files[0]; if (!f) return;
+        const data = await compressImage(f);
+        if (data) { state._achPhoto = data; renderAchPreview(); }
         input.value = '';
       },
       async addAchVideo() {
@@ -2032,6 +2139,12 @@
       delStep(rid, sid) {
         const r = state.rituals.find(x => x.id === rid); if (!r) return;
         r.steps = r.steps.filter(s => s.id !== sid);
+        // Чистим id удалённого шага из всех периодов — иначе счётчик ломается.
+        if (r.completions) {
+          Object.values(r.completions).forEach(period => {
+            if (period && typeof period === 'object') delete period[sid];
+          });
+        }
         save('rituals'); render();
       },
       delRitual(id) {
@@ -2052,11 +2165,25 @@
       },
 
       /* ---- АВАТАР ---- */
+      async pickAvatar() {
+        const picked = await pickImagesReference(1);
+        if (picked.cancelled) return;
+        if (picked.uris && picked.uris.length) {
+          state._newAvatar = await importImageToApp(picked.uris[0]);
+          App._renderAvatarPreview();
+          return;
+        }
+        if (picked.error) { alert(picked.error); return; }
+        if (picked.fallback) document.getElementById('avatarFile').click();
+      },
       async loadAvatar(input) {
         const f = input.files[0]; if (!f) return;
-        state._newAvatar = await saveMediaFile(f, false);
+        const data = await compressImage(f);
+        if (data) {
+          state._newAvatar = data;
+          App._renderAvatarPreview();
+        }
         input.value = '';
-        App._renderAvatarPreview();
       },
       clearAvatar() {
         state._newAvatar = '';
@@ -2117,6 +2244,24 @@
           btn.disabled = false;
           btn.textContent = original;
         }
+      },
+
+      /* ---- ЗАМЕНА window.prompt() — не работает в Android WebView ---- */
+      askText(title, defaultValue) {
+        return new Promise(resolve => {
+          App._promptCb = resolve;
+          $('#promptTitle').textContent = title;
+          const inp = $('#promptInput');
+          inp.value = defaultValue || '';
+          $('#promptModal').classList.add('show');
+          setTimeout(() => { inp.focus(); inp.select(); }, 50);
+        });
+      },
+      _promptResolve(value) {
+        $('#promptModal').classList.remove('show');
+        const cb = App._promptCb;
+        App._promptCb = null;
+        if (cb) cb(value);
       }
     };
     window.App = App;
@@ -2157,12 +2302,15 @@
       if (b) App.switchTab(b.dataset.tab);
     });
     $('#avatarBtn').addEventListener('click', () => App.openSettings(false));
-    $('#avatarEdit').addEventListener('click', () => $('#avatarFile').click());
+    $('#avatarEdit').addEventListener('click', () => App.pickAvatar());
     $('#settingsModal').addEventListener('click', e => {
       if (e.target.id === 'settingsModal') e.target.classList.remove('show');
     });
     $('#importModal').addEventListener('click', e => {
       if (e.target.id === 'importModal') e.target.classList.remove('show');
+    });
+    $('#promptModal').addEventListener('click', e => {
+      if (e.target.id === 'promptModal') App._promptResolve(null);
     });
 
     /* ============ ИНИЦИАЛИЗАЦИЯ ============ */
@@ -2198,8 +2346,6 @@
       if (!localStorage.getItem(LS.onboarded)) {
         setTimeout(() => App.openSettings(true), 300);
       }
-
-      // Никаких авто-проверок обновлений. Только по кнопке в настройках.
     })();
   </script>
 </body>
