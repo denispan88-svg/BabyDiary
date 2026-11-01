@@ -475,15 +475,6 @@
       box-shadow: var(--shadow)
     }
 
-    .datebar input[type=date] {
-      flex: 1;
-      border: none;
-      background: transparent;
-      padding: 0;
-      font-weight: 600;
-      font-size: 15px
-    }
-
     .stats {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -1105,13 +1096,9 @@
   <script>
     /* ============================================================
        NATIVE ANDROID APP (CAPACITOR) — NOT A PWA.
-       v1.0.10:
-         - Фото через @capacitor/camera (нативное сжатие, file:// URI).
-         - Копирование в DATA через Filesystem.copy(file:// → file://).
-         - Никакого base64 через мост — OOM-краш исключён.
-         - Видео по-прежнему через FilePicker (content:// URI).
+       v1.0.6.1: Добавлено листание дней (стрелки) и кнопка "Сегодня".
        ============================================================ */
-    const APP_VERSION = '1.0.6.2';
+    const APP_VERSION = '1.0.6.1';
     const BUILD_TAG = 'local';
     const GITHUB_REPO = 'denispan88-svg/BabyDiary';
 
@@ -1133,10 +1120,9 @@
       return uri;
     }
 
-    /* ============ ФОТО (нативный Camera plugin) ============ */
     async function pickPhotoNative() {
       if (!window.Capacitor?.Plugins?.Camera) {
-        return { error: 'Плагин Camera недоступен. Установите сборку v1.0.10.' };
+        return { error: 'Плагин Camera недоступен. Установите сборку v1.0.6.1.' };
       }
       try {
         const photo = await Capacitor.Plugins.Camera.getPhoto({
@@ -1180,7 +1166,6 @@
       }
     }
 
-    /* ============ ВИДЕО (FilePicker — content:// URI) ============ */
     async function pickVideoReference() {
       if (!window.Capacitor?.Plugins?.FilePicker) return { fallback: true };
       try {
@@ -1251,18 +1236,18 @@
       };
     }
 
-    /* ============ ОБНОВЛЕНИЯ ============ */
     function parseTag(tag) {
-      const m = String(tag || '').match(/^v(\d+)\.(\d+)\.(\d+)(?:-(\d+))?$/);
+      const m = String(tag || '').match(/^v(\d+)\.(\d+)\.(\d+)(?:\.(\d+))?(?:-(\d+))?$/);
       if (!m) return null;
-      return { major: +m[1], minor: +m[2], patch: +m[3], build: +(m[4] || 0) };
+      return { major: +m[1], minor: +m[2], patch: +m[3], build: +(m[4] || 0), run: +(m[5] || 0) };
     }
     function isNewer(a, b) {
       if (!a || !b) return false;
       if (a.major !== b.major) return a.major > b.major;
       if (a.minor !== b.minor) return a.minor > b.minor;
       if (a.patch !== b.patch) return a.patch > b.patch;
-      return a.build > b.build;
+      if (a.build !== b.build) return a.build > b.build;
+      return a.run > b.run;
     }
     async function checkForUpdates() {
       if (BUILD_TAG === 'local') { toast('Локальная сборка — проверка недоступна'); return; }
@@ -1300,7 +1285,6 @@
       document.getElementById('updateModal').classList.add('show');
     }
 
-    /* ============ СОСТОЯНИЕ ============ */
     const LS = {
       name: 'ld_name', mother: 'ld_mother', birth: 'ld_birth', avatar: 'ld_avatar',
       tasks: 'ld_tasks', notes: 'ld_notes', ach: 'ld_ach', rituals: 'ld_rituals',
@@ -1397,7 +1381,6 @@
       if (changed) save('tasks');
     }
 
-    /* ============ ПАРСЕР TXT ============ */
     function parsePlanText(text) {
       const map = {}, weekFocus = {}, errors = [];
       const lines = String(text || '').split(/\r?\n/);
@@ -1431,7 +1414,6 @@
       return { map, weekFocus, errors };
     }
 
-    /* ============ RENDER ============ */
     function renderHeader() {
       const w = getWeekNum(state.selectedDate);
       const name = state.name || 'Малыш';
@@ -1454,10 +1436,13 @@
     function renderTasks() {
       ensureTasksFor(state.selectedDate);
       const date = state.selectedDate;
+      const today = todayStr();
+      const isToday = date === today;
       const focus = getFocus(date);
       const tasks = state.tasks[date] || [];
-      const isPast = date < todayStr();
+      const isPast = date < today;
       const done = tasks.filter(t => t.status === 'done').length;
+
       let html = '';
       html += '<div class="focus-card">'
         + '<div class="fw">Фокус ' + focus.week + '-й недели '
@@ -1466,10 +1451,21 @@
         + '<div class="ft">' + focus.e + ' ' + esc(focus.t) + '</div>'
         + '<div class="fd">' + esc(focus.d) + '</div>'
         + '</div>';
-      html += '<div class="datebar">'
-        + '<input type="date" value="' + date + '" onchange="App.changeDate(this.value)">'
-        + '<button class="btn btn-mini btn-ghost" onclick="App.changeDate(\'' + todayStr() + '\')">Сегодня</button>'
-        + '</div>';
+
+      // Новый блок с листанием дней
+      html += '<div class="datebar" style="justify-content: space-between; padding: 10px 14px;">';
+      html += '<button class="btn btn-mini btn-ghost" style="padding: 8px 14px; font-size: 16px; border-radius: 50%;" onclick="App.changeDate(\'' + addDays(date, -1) + '\')">◀</button>';
+      
+      html += '<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1;">';
+      html += '<input type="date" value="' + date + '" onchange="App.changeDate(this.value)" style="width: auto; text-align: center; font-size: 15px; font-weight: 600; border: none; background: transparent; padding: 0; color: var(--text);">';
+      if (!isToday) {
+        html += '<button class="btn btn-mini btn-ghost" style="margin-top: 6px; padding: 4px 12px; font-size: 11px; border-radius: 12px;" onclick="App.changeDate(\'' + today + '\')">Сегодня</button>';
+      }
+      html += '</div>';
+
+      html += '<button class="btn btn-mini btn-ghost" style="padding: 8px 14px; font-size: 16px; border-radius: 50%;" onclick="App.changeDate(\'' + addDays(date, 1) + '\')">▶</button>';
+      html += '</div>';
+
       html += '<div class="card">';
       html += '<div class="card-title"><span>Задачи дня · ' + fmtDate(date) + '</span><span>' + done + '/' + tasks.length + '</span></div>';
       if (!tasks.length) html += '<div class="empty"><div class="e">🌸</div>Пока нет задач на этот день</div>';
@@ -1701,7 +1697,6 @@
       }
     }
 
-    /* ============ API ============ */
     const App = {
       switchTab(tab) { state.activeTab = tab; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); },
       changeDate(d) { if (!d) return; state.selectedDate = d; state.addTaskOpen = false; render(); },
@@ -1823,7 +1818,6 @@
         toast(msg);
       },
 
-      /* ---- ФОТО через Camera plugin ---- */
       async addNotePhoto() {
         const picked = await pickPhotoNative();
         if (picked.cancelled) return;
@@ -1935,7 +1929,6 @@
         save('rituals'); render(); toast('Ритуал создан');
       },
 
-      /* ---- АВАТАР ---- */
       async loadAvatar() {
         const picked = await pickPhotoNative();
         if (picked.cancelled) return;
@@ -1951,7 +1944,6 @@
         else { img.style.display = 'none'; emoji.style.display = 'block'; }
       },
 
-      /* ---- НАСТРОЙКИ ---- */
       openSettings(firstTime) {
         $('#setName').value = (state.name && state.name !== 'Малыш') ? state.name : '';
         $('#setMother').value = state.motherName || '';
@@ -2029,7 +2021,6 @@
       el.innerHTML = html;
     }
 
-    /* ============ СОБЫТИЯ ============ */
     $('#tabs').addEventListener('click', e => {
       const b = e.target.closest('.tab');
       if (b) App.switchTab(b.dataset.tab);
@@ -2040,7 +2031,6 @@
     $('#importModal').addEventListener('click', e => { if (e.target.id === 'importModal') e.target.classList.remove('show'); });
     $('#promptModal').addEventListener('click', e => { if (e.target.id === 'promptModal') App._promptResolve(null); });
 
-    /* ============ ИНИЦИАЛИЗАЦИЯ ============ */
     (function init() {
       if (!state.rituals.length && !localStorage.getItem(LS.onboarded)) {
         state.rituals = [
