@@ -189,7 +189,7 @@
       height: 150px;
       background: radial-gradient(circle, rgba(255, 255, 255, .75), transparent 70%);
       border-radius: 50%;
-      pointer-events: none; /* FIX: блик не перехватывает тапы по кнопке ✏️ */
+      pointer-events: none;
     }
 
     .fw {
@@ -202,8 +202,8 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      position: relative; /* FIX */
-      z-index: 1;         /* FIX */
+      position: relative;
+      z-index: 1;
     }
 
     .ft {
@@ -1006,7 +1006,7 @@
       </div>
       <input type="file" id="avatarFile" accept="image/*" style="display:none" onchange="App.loadAvatar(this)">
       <div class="row" style="justify-content:center;gap:8px;margin:10px 0 16px">
-        <button class="btn btn-mini btn-ghost" onclick="App.pickAvatar()">📷 Фото</button>
+        <button class="btn btn-mini btn-ghost" onclick="document.getElementById('avatarFile').click()">📷 Фото</button>
         <button class="btn btn-mini btn-ghost" onclick="App.clearAvatar()">🗑 Убрать</button>
       </div>
 
@@ -1110,18 +1110,16 @@
   <script>
     /* ============================================================
        NATIVE ANDROID APP (CAPACITOR) — NOT A PWA.
-       Проверка обновлений — только вручную, по кнопке в настройках.
-       v1.0.8:
-         - importImageToApp: copy() с toDirectory + fallback read+write
-         - кнопка "📷 Фото" в настройках → нативный FilePicker
-         - _addNotePhotoFallback сообщает, если фото не прочитались
-         - фикс кнопки ✏️ «Фокус недели» (сохранён из 1.0.7)
+       v1.0.9:
+         - Убран FilePicker для фото (крашил нативным кодом)
+         - Убран Filesystem.copy/readFile с content:// (крашил нативно)
+         - Фото: <input type=file> → arrayBuffer → base64 → Filesystem.writeFile(DATA)
+         - Видео: остаётся через FilePicker (URI не копируется)
        ============================================================ */
-    const APP_VERSION = '1.0.8';
-    const BUILD_TAG = 'local';   // ← CI инжектит v${APP_VERSION}-${run_number}
+    const APP_VERSION = '1.0.9';
+    const BUILD_TAG = 'local';
     const GITHUB_REPO = 'denispan88-svg/BabyDiary';
 
-    /* ============ УТИЛИТЫ ============ */
     const $ = (s, r = document) => r.querySelector(s);
     const $$ = (s, r = document) => [...r.querySelectorAll(s)];
     const uid = () => Math.random().toString(36).slice(2, 9);
@@ -1133,120 +1131,54 @@
     function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 2200) }
     function openImg(src) { $('#lbImg').src = src; $('#lightbox').classList.add('show') }
 
-    /* ============ РАБОТА С ФАЙЛАМИ (Capacitor) ============ */
     function getSrc(uri) {
       if (!uri) return '';
-      if (uri.startsWith('data:') || uri.startsWith('http://') || uri.startsWith('https://') || uri.startsWith('blob:')) {
-        return uri;
-      }
-      if (window.Capacitor) {
-        if (uri.startsWith('content://')) {
-          return 'http://localhost/_capacitor_content_/' + encodeURIComponent(uri);
-        }
-        if (typeof Capacitor.convertFileSrc === 'function') {
-          return Capacitor.convertFileSrc(uri);
-        }
-      }
+      if (uri.startsWith('data:') || uri.startsWith('http://') || uri.startsWith('https://') || uri.startsWith('blob:')) return uri;
+      if (window.Capacitor && typeof Capacitor.convertFileSrc === 'function') return Capacitor.convertFileSrc(uri);
       return uri;
     }
 
-    // Сжатие — используется ТОЛЬКО как fallback, когда FilePicker недоступен.
-    function compressImage(file, max = 900) {
-      return new Promise(res => {
-        const fr = new FileReader();
-        fr.onerror = () => res(null);
-        fr.onload = e => {
-          const img = new Image();
-          img.onload = () => {
-            const cv = document.createElement('canvas'); let { width: w, height: h } = img;
-            if (w > h && w > max) { h *= max / w; w = max } else if (h > max) { w *= max / h; h = max }
-            cv.width = w; cv.height = h; cv.getContext('2d').drawImage(img, 0, 0, w, h);
-            res(cv.toDataURL('image/jpeg', .72));
-          };
-          img.onerror = () => res(null);
-          img.src = e.target.result;
-        };
-        fr.readAsDataURL(file);
-      })
-    }
-
-    // Нативный выбор изображений без чтения содержимого в JS (без OOM).
-    async function pickImagesReference(limit = 1) {
-      if (!window.Capacitor?.Plugins?.FilePicker) {
-        return { fallback: true };
-      }
+    // Безопасная обработка изображения: file → arrayBuffer → base64 → файл в DATA.
+    // Никаких нативных copy/readFile с content://, никакого декодирования в Image.
+    async function processImageFile(file) {
+      if (!file) return null;
       try {
-        const result = await Capacitor.Plugins.FilePicker.pickFiles({
-          types: ['image/*'],
-          limit,
-          readData: false
-        });
-        if (!result.files || !result.files.length) return { cancelled: true };
-        const uris = result.files.map(f => f.uri || f.path).filter(Boolean);
-        if (!uris.length) return { error: 'Не удалось получить пути к файлам' };
-        return { uris };
+        const arrayBuffer = await file.arrayBuffer();
+        const uint8 = new Uint8Array(arrayBuffer);
+
+        let binary = '';
+        const CHUNK = 0x8000;
+        for (let i = 0; i < uint8.length; i += CHUNK) {
+          binary += String.fromCharCode.apply(null, uint8.subarray(i, Math.min(i + CHUNK, uint8.length)));
+        }
+        const base64 = btoa(binary);
+
+        const m = (file.name || '').match(/\.(jpe?g|png|webp|gif|heic|heif)$/i);
+        const ext = m ? m[1].toLowerCase() : 'jpg';
+        const fileName = 'photo_' + Date.now() + '_' + Math.floor(Math.random() * 1000) + '.' + ext;
+
+        if (window.Capacitor?.Plugins?.Filesystem) {
+          const result = await Capacitor.Plugins.Filesystem.writeFile({
+            path: fileName,
+            data: base64,
+            directory: 'DATA',
+            encoding: 'base64'
+          });
+          console.log('[photo] saved to DATA:', result.uri);
+          return result.uri;
+        }
+        return 'data:image/' + (ext === 'jpg' ? 'jpeg' : ext) + ';base64,' + base64;
       } catch (e) {
-        return { error: e.message || 'Ошибка выбора файла' };
+        console.error('[photo] processImageFile failed:', e);
+        alert('Не удалось обработать фото: ' + (e.message || e));
+        return null;
       }
     }
 
-    // Копирует content:// в приватную папку DATA.
-    // Вариант 1: Filesystem.copy с toDirectory.
-    // Вариант 2: readFile + writeFile(encoding: base64) — безопасно по памяти для фото.
-    // Вариант 3: сырой content:// (сработает до перезапуска).
-    async function importImageToApp(uri) {
-      if (!uri) return null;
-      if (uri.startsWith('file://') || uri.startsWith('data:') || uri.startsWith('http')) return uri;
-      if (!window.Capacitor?.Plugins?.Filesystem) return uri;
-
-      const m = uri.match(/\.(jpe?g|png|webp|heic|heif|gif)/i);
-      const ext = m ? m[1].toLowerCase() : 'jpg';
-      const fileName = 'photo_' + Date.now() + '_' + Math.floor(Math.random() * 1000) + '.' + ext;
-
-      // 1-я попытка: copy
-      try {
-        await Capacitor.Plugins.Filesystem.copy({
-          from: uri,
-          to: fileName,
-          toDirectory: 'DATA'
-        });
-        const info = await Capacitor.Plugins.Filesystem.getUri({ path: fileName, directory: 'DATA' });
-        console.log('[photo] copied via copy():', info.uri);
-        return info.uri;
-      } catch (e) {
-        console.warn('[photo] copy() failed, trying read+write:', e);
-      }
-
-      // 2-я попытка: readFile + writeFile (base64)
-      try {
-        const { data } = await Capacitor.Plugins.Filesystem.readFile({ path: uri });
-        await Capacitor.Plugins.Filesystem.writeFile({
-          path: fileName,
-          data: data,
-          directory: 'DATA',
-          encoding: 'base64'
-        });
-        const info = await Capacitor.Plugins.Filesystem.getUri({ path: fileName, directory: 'DATA' });
-        console.log('[photo] copied via read+write:', info.uri);
-        return info.uri;
-      } catch (e2) {
-        console.warn('[photo] read+write also failed, storing raw URI:', e2);
-      }
-
-      return uri;
-    }
-
-    // Видео: возвращает content:// или file:// URI без копирования.
     async function pickVideoReference() {
-      if (!window.Capacitor?.Plugins?.FilePicker) {
-        return { fallback: true };
-      }
+      if (!window.Capacitor?.Plugins?.FilePicker) return { fallback: true };
       try {
-        const result = await Capacitor.Plugins.FilePicker.pickFiles({
-          types: ['video/*'],
-          limit: 1,
-          readData: false
-        });
+        const result = await Capacitor.Plugins.FilePicker.pickFiles({ types: ['video/*'], limit: 1, readData: false });
         const f = result.files && result.files[0];
         if (!f) return { cancelled: true };
         const uri = f.uri || f.path;
@@ -1257,33 +1189,20 @@
       }
     }
 
-    // Fallback для видео (когда нет FilePicker) — сохранение base64 в DATA.
-    async function saveMediaFile(file, isVideo) {
+    async function saveMediaFile(file) {
       if (!file) return null;
-      if (isVideo && file.size > 100 * 1024 * 1024) {
-        if (!confirm('Видео больше 100 МБ, на слабых устройствах может не сохраниться. Продолжить?')) return null;
+      if (file.size > 100 * 1024 * 1024) {
+        if (!confirm('Видео больше 100 МБ, может не сохраниться. Продолжить?')) return null;
       }
-
-      let base64Data = '';
-      if (isVideo) {
-        base64Data = await new Promise(res => {
-          const fr = new FileReader();
-          fr.onload = e => res(e.target.result);
-          fr.onerror = () => res(null);
-          fr.readAsDataURL(file);
-        });
-      } else {
-        base64Data = await compressImage(file);
-      }
+      const base64Data = await new Promise(res => {
+        const fr = new FileReader();
+        fr.onload = e => res(e.target.result);
+        fr.onerror = () => res(null);
+        fr.readAsDataURL(file);
+      });
       if (!base64Data) { alert('Не удалось прочитать файл.'); return null; }
-
-      if (!window.Capacitor || !Capacitor.Plugins || !Capacitor.Plugins.Filesystem) {
-        return base64Data;
-      }
-
-      const ext = isVideo ? 'mp4' : 'jpg';
-      const fileName = 'media_' + Date.now() + '_' + Math.floor(Math.random() * 1000) + '.' + ext;
-
+      if (!window.Capacitor?.Plugins?.Filesystem) return base64Data;
+      const fileName = 'media_' + Date.now() + '_' + Math.floor(Math.random() * 1000) + '.mp4';
       try {
         const result = await Capacitor.Plugins.Filesystem.writeFile({
           path: fileName,
@@ -1300,20 +1219,14 @@
 
     async function openVideoSystem(uri) {
       if (!uri) return;
-      if (uri.startsWith('data:') || uri.startsWith('blob:')) {
-        showVideoInApp(uri);
-        return;
-      }
+      if (uri.startsWith('data:') || uri.startsWith('blob:')) { showVideoInApp(uri); return; }
       if (window.Capacitor?.Plugins?.FileOpener) {
         try {
-          await Capacitor.Plugins.FileOpener.open({
-            filePath: uri,
-            contentType: 'video/mp4'
-          });
+          await Capacitor.Plugins.FileOpener.open({ filePath: uri, contentType: 'video/mp4' });
           return;
         } catch (e) {
           console.warn('FileOpener failed:', e);
-          alert('Не удалось открыть видео. Возможно, файл был перемещён или удалён из галереи, либо приложению не выдан доступ. Прикрепите видео заново.');
+          alert('Не удалось открыть видео. Возможно, файл был перемещён или удалён из галереи. Прикрепите видео заново.');
           return;
         }
       }
@@ -1322,8 +1235,7 @@
 
     function showVideoInApp(uri) {
       const lb = $('#lightbox');
-      lb.innerHTML = '<video src="' + getSrc(uri) + '" controls autoplay '
-        + 'style="max-width:100%;max-height:100%;border-radius:8px"></video>';
+      lb.innerHTML = '<video src="' + getSrc(uri) + '" controls autoplay style="max-width:100%;max-height:100%;border-radius:8px"></video>';
       lb.classList.add('show');
       lb.onclick = (e) => {
         if (e.target.tagName === 'VIDEO') return;
@@ -1333,7 +1245,6 @@
       };
     }
 
-    /* ============ ПРОВЕРКА ОБНОВЛЕНИЙ (только вручную) ============ */
     function parseTag(tag) {
       const m = String(tag || '').match(/^v(\d+)\.(\d+)\.(\d+)(?:-(\d+))?$/);
       if (!m) return null;
@@ -1349,30 +1260,18 @@
     }
 
     async function checkForUpdates() {
-      if (BUILD_TAG === 'local') {
-        toast('Локальная сборка — проверка недоступна');
-        return;
-      }
+      if (BUILD_TAG === 'local') { toast('Локальная сборка — проверка недоступна'); return; }
       try {
         const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest?t=${Date.now()}`, {
-          headers: {
-            'Accept': 'application/vnd.github+json',
-            'X-GitHub-Api-Version': '2022-11-28'
-          },
+          headers: { 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' },
           cache: 'no-store'
         });
-        if (!res.ok) {
-          toast('Не удалось проверить: HTTP ' + res.status);
-          return;
-        }
+        if (!res.ok) { toast('Не удалось проверить: HTTP ' + res.status); return; }
         const data = await res.json();
         const remote = parseTag(data.tag_name);
         const local = parseTag(BUILD_TAG);
-        if (isNewer(remote, local)) {
-          showUpdateModal(data.tag_name, data.body, data.assets);
-        } else {
-          toast('У вас последняя версия ✨');
-        }
+        if (isNewer(remote, local)) showUpdateModal(data.tag_name, data.body, data.assets);
+        else toast('У вас последняя версия ✨');
       } catch (e) {
         console.warn('[update] exception:', e);
         toast('Ошибка проверки: ' + e.message);
@@ -1385,22 +1284,18 @@
       const notesEl = document.getElementById('updateNotes');
       const link = document.getElementById('updateLink');
       if (!cur || !nw || !link) return;
-
       cur.textContent = BUILD_TAG;
       nw.textContent = newTag;
       notesEl.textContent = notes || 'Нет описания изменений.';
-
       let downloadUrl = `https://github.com/${GITHUB_REPO}/releases/tag/${newTag}`;
       if (assets && assets.length > 0) {
         const apkAsset = assets.find(a => a.name.toLowerCase().endsWith('.apk'));
         if (apkAsset) downloadUrl = apkAsset.browser_download_url;
       }
       link.href = downloadUrl;
-
       document.getElementById('updateModal').classList.add('show');
     }
 
-    /* ============ СОСТОЯНИЕ ============ */
     const LS = {
       name: 'ld_name', mother: 'ld_mother', birth: 'ld_birth', avatar: 'ld_avatar',
       tasks: 'ld_tasks', notes: 'ld_notes', ach: 'ld_ach', rituals: 'ld_rituals',
@@ -1452,13 +1347,10 @@
       } catch (e) {
         const isQuota = e && (e.name === 'QuotaExceededError' || /quota/i.test(e.message || ''));
         console.error('save failed', k, e);
-        if (isQuota) {
-          alert('Хранилище заполнено. Удалите старые заметки или достижения с фото, затем повторите.');
-        }
+        if (isQuota) alert('Хранилище заполнено. Удалите старые заметки или достижения с фото.');
       }
     }
 
-    /* ============ НЕДЕЛЯ ============ */
     function getWeekNum(dateStr) {
       if (!state.birth) return 1;
       const b = new Date(state.birth + 'T00:00:00');
@@ -1476,73 +1368,50 @@
       d.setDate(d.getDate() + diff);
       return todayStr(d);
     }
-
     function getPeriodKey(period) {
       const t = todayStr();
       if (period === 'weekly') return getMonday(t);
       if (period === 'monthly') return t.slice(0, 7);
       return t;
     }
-
     function getFocus(dateStr) {
       const wn = getWeekNum(dateStr);
       const mk = getMonday(dateStr);
       const imported = state.weekFocus[mk];
-      if (imported && imported.trim()) {
-        return { week: wn, t: imported, e: '📥', d: 'Фокус недели из импорта' };
-      }
+      if (imported && imported.trim()) return { week: wn, t: imported, e: '📥', d: 'Фокус недели из импорта' };
       return { week: wn, t: 'Не задан', e: '📅', d: 'Нажмите ✏️ чтобы указать фокус' };
     }
-
-    function ensureTasksFor(date) {
-      if (!state.tasks[date]) {
-        state.tasks[date] = [];
-      }
-    }
-
+    function ensureTasksFor(date) { if (!state.tasks[date]) state.tasks[date] = []; }
     function finalizePastTasks() {
       const today = todayStr();
       let changed = false;
       for (const date in state.tasks) {
         if (date < today) {
-          state.tasks[date].forEach(t => {
-            if (!t.status) { t.status = 'failed'; changed = true }
-          });
+          state.tasks[date].forEach(t => { if (!t.status) { t.status = 'failed'; changed = true } });
         }
       }
       if (changed) save('tasks');
     }
 
-    /* ============ ПАРСЕР TXT ============ */
     function parsePlanText(text) {
       const map = {}, weekFocus = {}, errors = [];
       const lines = String(text || '').split(/\r?\n/);
       let currentFocus = null;
       const focusRe = /^\s*фокус(?:\s+недели)?\s*[:\-—–]\s*(.+?)\s*$/i;
       const dateRe = /^\s*(\d{1,2})\.(\d{1,2})\.(\d{2,4})\s*[:\-—–]\s*(.+?)\s*$/;
-
       lines.forEach((line, idx) => {
         const raw = line.trim();
         if (!raw || raw.startsWith('#')) return;
-
         const fm = raw.match(focusRe);
-        if (fm) {
-          currentFocus = fm[1].trim() || null;
-          return;
-        }
-
+        if (fm) { currentFocus = fm[1].trim() || null; return; }
         const m = raw.match(dateRe);
         if (!m) { errors.push({ line: idx + 1, text: raw }); return; }
         let [, d, mo, y, rest] = m;
         if (y.length === 2) y = '20' + y;
         const dNum = +d, moNum = +mo, yNum = +y;
-        if (dNum < 1 || dNum > 31 || moNum < 1 || moNum > 12) {
-          errors.push({ line: idx + 1, text: raw }); return;
-        }
+        if (dNum < 1 || dNum > 31 || moNum < 1 || moNum > 12) { errors.push({ line: idx + 1, text: raw }); return; }
         const probe = new Date(yNum, moNum - 1, dNum);
-        if (probe.getFullYear() !== yNum || probe.getMonth() !== moNum - 1 || probe.getDate() !== dNum) {
-          errors.push({ line: idx + 1, text: raw }); return;
-        }
+        if (probe.getFullYear() !== yNum || probe.getMonth() !== moNum - 1 || probe.getDate() !== dNum) { errors.push({ line: idx + 1, text: raw }); return; }
         const dd = String(dNum).padStart(2, '0');
         const mm = String(moNum).padStart(2, '0');
         const date = `${y}-${mm}-${dd}`;
@@ -1552,14 +1421,11 @@
         if (!name) { errors.push({ line: idx + 1, text: raw }); return; }
         if (!map[date]) map[date] = [];
         map[date].push({ name, target, type: /мин|час/i.test(target) ? 'time' : 'count' });
-
         if (currentFocus) weekFocus[getMonday(date)] = currentFocus;
       });
-
       return { map, weekFocus, errors };
     }
 
-    /* ============ HEADER ============ */
     function renderHeader() {
       const w = getWeekNum(state.selectedDate);
       const name = state.name || 'Малыш';
@@ -1567,7 +1433,6 @@
       let sub = w + '-я неделя жизни';
       if (state.motherName) sub += ' · мама ' + state.motherName;
       $('#headerSub').textContent = sub;
-
       const img = $('#avatarImg'), emoji = $('#avatarEmoji');
       if (state.avatar) {
         const src = getSrc(state.avatar);
@@ -1580,7 +1445,6 @@
       }
     }
 
-    /* ============ ЗАНЯТИЯ ============ */
     function renderTasks() {
       ensureTasksFor(state.selectedDate);
       const date = state.selectedDate;
@@ -1588,7 +1452,6 @@
       const tasks = state.tasks[date] || [];
       const isPast = date < todayStr();
       const done = tasks.filter(t => t.status === 'done').length;
-
       let html = '';
       html += '<div class="focus-card">'
         + '<div class="fw">Фокус ' + focus.week + '-й недели '
@@ -1597,26 +1460,20 @@
         + '<div class="ft">' + focus.e + ' ' + esc(focus.t) + '</div>'
         + '<div class="fd">' + esc(focus.d) + '</div>'
         + '</div>';
-
       html += '<div class="datebar">'
         + '<input type="date" value="' + date + '" onchange="App.changeDate(this.value)">'
         + '<button class="btn btn-mini btn-ghost" onclick="App.changeDate(\'' + todayStr() + '\')">Сегодня</button>'
         + '</div>';
-
       html += '<div class="card">';
       html += '<div class="card-title"><span>Задачи дня · ' + fmtDate(date) + '</span><span>' + done + '/' + tasks.length + '</span></div>';
-      if (!tasks.length) {
-        html += '<div class="empty"><div class="e">🌸</div>Пока нет задач на этот день</div>';
-      } else {
-        tasks.forEach(t => { html += renderTaskItem(t, isPast); });
-      }
+      if (!tasks.length) html += '<div class="empty"><div class="e">🌸</div>Пока нет задач на этот день</div>';
+      else tasks.forEach(t => { html += renderTaskItem(t, isPast); });
       html += '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">'
         + '<button class="btn btn-ghost" onclick="App.toggleAdd()">➕ Добавить задачу</button>'
         + '<button class="btn btn-primary" onclick="App.openImport()">📥 Импорт плана</button>'
         + '</div>';
       if (state.addTaskOpen) html += renderAddTaskForm();
       html += '</div>';
-
       const stats = getWeekStats(date);
       html += '<div class="card">'
         + '<div class="card-title">Статистика недели</div>'
@@ -1677,7 +1534,6 @@
       return { done, failed, total };
     }
 
-    /* ============ ЗАМЕТКИ ============ */
     function renderNotes() {
       let html = '<div class="card">'
         + '<div class="card-title">Новая заметка / наблюдение</div>'
@@ -1690,11 +1546,9 @@
         + '<div class="row" style="justify-content:flex-end;margin-top:10px">'
         + '<button class="btn btn-primary" onclick="App.saveNote()">Сохранить</button>'
         + '</div></div>';
-
       html += '<div class="card"><div class="card-title">Все наблюдения · ' + state.notes.length + '</div>';
-      if (!state.notes.length) {
-        html += '<div class="empty"><div class="e">📝</div>Пока нет заметок.</div>';
-      } else {
+      if (!state.notes.length) html += '<div class="empty"><div class="e">📝</div>Пока нет заметок.</div>';
+      else {
         [...state.notes].sort((a, b) => b.ts - a.ts).forEach(n => {
           html += '<div class="note">'
             + '<div class="note-head"><div>'
@@ -1727,12 +1581,10 @@
       return out;
     }
 
-    /* ============ ДОСТИЖЕНИЯ ============ */
     function renderAch() {
       const now = new Date();
       const pad = n => String(n).padStart(2, '0');
       const nowStr = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()) + 'T' + pad(now.getHours()) + ':' + pad(now.getMinutes());
-
       let html = '<div class="card">'
         + '<div class="card-title">🏆 Новое достижение</div>'
         + '<input type="text" id="achTitle" placeholder="Заголовок (напр.: Первая улыбка)" style="margin-bottom:8px">'
@@ -1746,11 +1598,9 @@
         + '<div class="row" style="justify-content:flex-end;margin-top:10px">'
         + '<button class="btn btn-primary" onclick="App.saveAch()">Добавить</button>'
         + '</div></div>';
-
       html += '<div class="card"><div class="card-title">Все достижения · ' + state.ach.length + '</div>';
-      if (!state.ach.length) {
-        html += '<div class="empty"><div class="e">🌟</div>Каждое «впервые» — победа!</div>';
-      } else {
+      if (!state.ach.length) html += '<div class="empty"><div class="e">🌟</div>Каждое «впервые» — победа!</div>';
+      else {
         [...state.ach].sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(a => {
           const d = new Date(a.date);
           html += '<div class="ach">'
@@ -1763,15 +1613,8 @@
           if (a.desc) html += '<div class="ach-desc">' + esc(a.desc) + '</div>';
           if (a.photo) html += '<img src="' + getSrc(a.photo) + '" onclick="openImg(this.src)">';
           if (a.video) {
-            if (a.video.startsWith('data:') || a.video.startsWith('blob:')) {
-              html += '<video src="' + getSrc(a.video) + '" controls></video>';
-            } else {
-              html += '<div class="video-thumb" data-uri="' + esc(a.video) + '" '
-                + 'onclick="App.openVideoSystem(this.dataset.uri)">'
-                + '<div class="video-thumb-icon">▶</div>'
-                + '<div class="video-thumb-hint">Нажмите, чтобы открыть видео</div>'
-                + '</div>';
-            }
+            if (a.video.startsWith('data:') || a.video.startsWith('blob:')) html += '<video src="' + getSrc(a.video) + '" controls></video>';
+            else html += '<div class="video-thumb" data-uri="' + esc(a.video) + '" onclick="App.openVideoSystem(this.dataset.uri)"><div class="video-thumb-icon">▶</div><div class="video-thumb-hint">Нажмите, чтобы открыть видео</div></div>';
           }
           html += '</div>';
         });
@@ -1780,17 +1623,14 @@
       return html;
     }
 
-    /* ============ РИТУАЛЫ ============ */
     function renderRituals() {
       let html = '';
       state.rituals.forEach(r => {
         const periodKey = getPeriodKey(r.period);
         const done = (r.completions && r.completions[periodKey]) || {};
         const total = r.steps.length;
-        // Считаем ТОЛЬКО по текущим шагам — «мёртвые» id удалённых шагов не учитываются.
         const doneCount = r.steps.filter(s => done[s.id]).length;
         const all = total > 0 && doneCount === total;
-
         html += '<div class="ritual">'
           + '<div class="ritual-head">'
           + '<div class="ritual-name">' + (r.emoji || '🌙') + ' ' + esc(r.name) + '</div>'
@@ -1798,7 +1638,6 @@
           + '<button class="btn btn-mini btn-ghost" onclick="App.checkAllRitual(\'' + r.id + '\')">✅ Все</button>'
           + '<div class="period">' + (r.period === 'daily' ? 'каждый день' : r.period === 'weekly' ? 'каждую неделю' : 'каждый месяц') + '</div>'
           + '</div></div>';
-
         r.steps.forEach(s => {
           const on = done[s.id];
           html += '<div class="step ' + (on ? 'on' : '') + '">'
@@ -1807,7 +1646,6 @@
             + '<button class="del" onclick="App.delStep(\'' + r.id + '\',\'' + s.id + '\')">✕</button>'
             + '</div>';
         });
-
         html += '<div class="row" style="justify-content:space-between;margin-top:10px">'
           + '<div style="font-size:12px;color:#8d8091">' + (all ? '✅ Выполнено!' : 'Выполнено ' + doneCount + ' из ' + total) + '</div>'
           + '<button class="del" onclick="App.delRitual(\'' + r.id + '\')">Удалить</button>'
@@ -1817,7 +1655,6 @@
           + '<button class="btn btn-mini btn-ghost" onclick="App.addStep(\'' + r.id + '\')">+</button>'
           + '</div></div>';
       });
-
       html += '<div class="card">'
         + '<div class="card-title">Создать ритуал</div>'
         + '<input type="text" id="ritName" placeholder="Название" style="margin-bottom:8px">'
@@ -1831,7 +1668,6 @@
       return html;
     }
 
-    /* ============ ПРИКОРМ ============ */
     function renderFood() {
       return '<div class="card"><div class="empty"><div class="e">🍼</div>'
         + '<h3 style="font-size:18px;margin-bottom:8px;color:var(--text)">Прикорм</h3>'
@@ -1839,25 +1675,16 @@
         + '</div></div>';
     }
 
-    /* ============ РЕНДЕР ============ */
     function render() {
       try {
         finalizePastTasks();
         renderHeader();
         const main = $('#main');
-        if (state.activeTab === 'tasks') {
-          main.innerHTML = renderTasks();
-        } else if (state.activeTab === 'notes') {
-          main.innerHTML = renderNotes();
-          renderNotePhotos();
-        } else if (state.activeTab === 'achieve') {
-          main.innerHTML = renderAch();
-          renderAchPreview();
-        } else if (state.activeTab === 'rituals') {
-          main.innerHTML = renderRituals();
-        } else if (state.activeTab === 'food') {
-          main.innerHTML = renderFood();
-        }
+        if (state.activeTab === 'tasks') main.innerHTML = renderTasks();
+        else if (state.activeTab === 'notes') { main.innerHTML = renderNotes(); renderNotePhotos(); }
+        else if (state.activeTab === 'achieve') { main.innerHTML = renderAch(); renderAchPreview(); }
+        else if (state.activeTab === 'rituals') main.innerHTML = renderRituals();
+        else if (state.activeTab === 'food') main.innerHTML = renderFood();
         $$('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === state.activeTab));
       } catch (err) {
         console.error(err);
@@ -1868,19 +1695,9 @@
       }
     }
 
-    /* ============ API ============ */
     const App = {
-      switchTab(tab) {
-        state.activeTab = tab;
-        render();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      },
-      changeDate(d) {
-        if (!d) return;
-        state.selectedDate = d;
-        state.addTaskOpen = false;
-        render();
-      },
+      switchTab(tab) { state.activeTab = tab; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); },
+      changeDate(d) { if (!d) return; state.selectedDate = d; state.addTaskOpen = false; render(); },
       async editFocus() {
         const current = getFocus(state.selectedDate).t;
         const val = await App.askText('Фокус недели', current === 'Не задан' ? '' : current);
@@ -1889,8 +1706,6 @@
         save('weekFocus');
         render();
       },
-
-      /* ---- задачи ---- */
       toggleDone(id) {
         const list = state.tasks[state.selectedDate]; if (!list) return;
         const t = list.find(x => x.id === id);
@@ -1918,11 +1733,7 @@
         if (!name) { toast('Введите название'); return; }
         const target = (t ? t.value : '').trim() || '—';
         ensureTasksFor(state.selectedDate);
-        state.tasks[state.selectedDate].push({
-          id: 't' + uid(), name, target,
-          type: /мин|час/i.test(target) ? 'time' : 'count',
-          reps: '', time: '', note: '', status: null
-        });
+        state.tasks[state.selectedDate].push({ id: 't' + uid(), name, target, type: /мин|час/i.test(target) ? 'time' : 'count', reps: '', time: '', note: '', status: null });
         save('tasks'); state.addTaskOpen = false; render(); toast('Задача добавлена');
       },
       noteFromTask(id) {
@@ -1940,23 +1751,12 @@
           toast('Заметка привязана к задаче');
         }, 60);
       },
-
-      /* ---- ИМПОРТ ---- */
-      openImport() {
-        $('#importText').value = '';
-        $('#importPreview').innerHTML = '';
-        $('#importClearFocus').checked = false;
-        $('#importModal').classList.add('show');
-      },
+      openImport() { $('#importText').value = ''; $('#importPreview').innerHTML = ''; $('#importClearFocus').checked = false; $('#importModal').classList.add('show'); },
       closeImport() { $('#importModal').classList.remove('show'); },
       loadImportFile(input) {
         const f = input.files[0]; if (!f) return;
         const fr = new FileReader();
-        fr.onload = e => {
-          $('#importText').value = e.target.result;
-          App.previewImport();
-          toast('Файл загружен');
-        };
+        fr.onload = e => { $('#importText').value = e.target.result; App.previewImport(); toast('Файл загружен'); };
         fr.onerror = () => toast('Не удалось прочитать файл');
         fr.readAsText(f, 'UTF-8');
         input.value = '';
@@ -1971,23 +1771,15 @@
         if (!total && !focuses.length && !errors.length) { prev.innerHTML = ''; return; }
         let html = '';
         if (focuses.length) {
-          html += '<div style="font-size:12.5px;color:#3f7d6b;font-weight:700;margin-bottom:6px">'
-            + '📥 Фокусы недель: ' + focuses.length + '</div>';
-          focuses.sort().forEach(mk => {
-            html += '<div class="prev-focus"><b>с ' + fmtDMY(mk) + '</b><span>' + esc(weekFocus[mk]) + '</span></div>';
-          });
+          html += '<div style="font-size:12.5px;color:#3f7d6b;font-weight:700;margin-bottom:6px">📥 Фокусы недель: ' + focuses.length + '</div>';
+          focuses.sort().forEach(mk => { html += '<div class="prev-focus"><b>с ' + fmtDMY(mk) + '</b><span>' + esc(weekFocus[mk]) + '</span></div>'; });
         }
         if (total) {
-          html += '<div style="font-size:12.5px;color:#7a6ba8;font-weight:700;margin-bottom:6px;margin-top:8px">'
-            + 'Задач: ' + total + ' на ' + dates.length + ' дн.</div>';
-          dates.slice(0, 4).forEach(d => {
-            html += '<div class="prev-item"><b>' + fmtDMY(d) + '</b><span>' + map[d].length + ' задач</span></div>';
-          });
+          html += '<div style="font-size:12.5px;color:#7a6ba8;font-weight:700;margin-bottom:6px;margin-top:8px">Задач: ' + total + ' на ' + dates.length + ' дн.</div>';
+          dates.slice(0, 4).forEach(d => { html += '<div class="prev-item"><b>' + fmtDMY(d) + '</b><span>' + map[d].length + ' задач</span></div>'; });
           if (dates.length > 4) html += '<div class="hint">…и ещё ' + (dates.length - 4) + ' дн.</div>';
         }
-        if (errors.length) {
-          html += '<div style="margin-top:8px;font-size:12px;color:#c86b6b">⚠ Пропущено строк: ' + errors.length + '</div>';
-        }
+        if (errors.length) html += '<div style="margin-top:8px;font-size:12px;color:#c86b6b">⚠ Пропущено строк: ' + errors.length + '</div>';
         prev.innerHTML = html;
       },
       doImport(mode) {
@@ -1999,32 +1791,23 @@
         if ($('#importClearFocus').checked) state.weekFocus = {};
         Object.assign(state.weekFocus, weekFocus);
         save('weekFocus');
-
         const today = todayStr();
         let addedTasks = 0, changedDays = 0;
-
         dates.forEach(date => {
           const items = map[date];
           if (mode === 'replace') {
-            state.tasks[date] = items.map(t => ({
-              id: 't' + uid(), name: t.name, target: t.target, type: t.type,
-              reps: '', time: '', note: '', status: date < today ? 'failed' : null
-            }));
+            state.tasks[date] = items.map(t => ({ id: 't' + uid(), name: t.name, target: t.target, type: t.type, reps: '', time: '', note: '', status: date < today ? 'failed' : null }));
             changedDays++; addedTasks += items.length;
           } else {
             if (!state.tasks[date]) state.tasks[date] = [];
             const room = Math.max(0, 20 - state.tasks[date].length);
             items.slice(0, room).forEach(t => {
-              state.tasks[date].push({
-                id: 't' + uid(), name: t.name, target: t.target, type: t.type,
-                reps: '', time: '', note: '', status: date < today ? 'failed' : null
-              });
+              state.tasks[date].push({ id: 't' + uid(), name: t.name, target: t.target, type: t.type, reps: '', time: '', note: '', status: date < today ? 'failed' : null });
             });
             addedTasks += Math.min(room, items.length);
             changedDays++;
           }
         });
-
         save('tasks');
         App.closeImport();
         render();
@@ -2033,41 +1816,26 @@
         toast(msg);
       },
 
-      /* ---- заметки / фото ---- */
-      async addNotePhoto() {
-        const picked = await pickImagesReference(5);
-        if (picked.cancelled) return;
-        if (picked.uris) {
-          for (const uri of picked.uris) {
-            const finalUri = await importImageToApp(uri);
-            if (finalUri) state.pendingPhotos.push(finalUri);
-          }
-          renderNotePhotos();
-          return;
-        }
-        if (picked.error) { alert(picked.error); return; }
-        if (picked.fallback) document.getElementById('_notePhotoFallbackInput').click();
-      },
+      /* ---- ФОТО: только <input type=file>, без FilePicker ---- */
+      addNotePhoto() { document.getElementById('_notePhotoFallbackInput').click(); },
       async _addNotePhotoFallback(input) {
         const files = [...input.files].slice(0, 5);
+        if (!files.length) return;
         let added = 0;
         for (const f of files) {
-          const data = await compressImage(f);
-          if (data) { state.pendingPhotos.push(data); added++; }
+          const uri = await processImageFile(f);
+          if (uri) { state.pendingPhotos.push(uri); added++; }
         }
-        if (files.length && !added) toast('Не удалось прочитать фото');
-        input.value = ''; renderNotePhotos();
+        input.value = '';
+        renderNotePhotos();
+        if (added) toast('Фото добавлено: ' + added);
       },
       saveNote() {
         const ta = $('#noteText');
         const text = ta ? ta.value.trim() : '';
         if (!text && !state.pendingPhotos.length) { toast('Добавьте текст или фото'); return; }
         const sel = $('#noteLink');
-        state.notes.push({
-          id: uid(), ts: Date.now(), text,
-          taskName: sel ? sel.value : '',
-          photos: [...state.pendingPhotos]
-        });
+        state.notes.push({ id: uid(), ts: Date.now(), text, taskName: sel ? sel.value : '', photos: [...state.pendingPhotos] });
         state.pendingPhotos = [];
         save('notes'); render(); toast('Заметка сохранена ✨');
       },
@@ -2077,40 +1845,23 @@
         save('notes'); render();
       },
 
-      /* ---- достижения / фото / видео ---- */
-      async addAchPhoto() {
-        const picked = await pickImagesReference(1);
-        if (picked.cancelled) return;
-        if (picked.uris && picked.uris.length) {
-          state._achPhoto = await importImageToApp(picked.uris[0]);
-          renderAchPreview();
-          return;
-        }
-        if (picked.error) { alert(picked.error); return; }
-        if (picked.fallback) document.getElementById('_achPhotoFallbackInput').click();
-      },
+      addAchPhoto() { document.getElementById('_achPhotoFallbackInput').click(); },
       async _addAchPhotoFallback(input) {
         const f = input.files[0]; if (!f) return;
-        const data = await compressImage(f);
-        if (data) { state._achPhoto = data; renderAchPreview(); }
+        const uri = await processImageFile(f);
+        if (uri) { state._achPhoto = uri; renderAchPreview(); }
         input.value = '';
       },
       async addAchVideo() {
         const picked = await pickVideoReference();
         if (picked.cancelled) return;
-        if (picked.uri) {
-          state._achVideo = picked.uri;
-          renderAchPreview();
-          return;
-        }
+        if (picked.uri) { state._achVideo = picked.uri; renderAchPreview(); return; }
         if (picked.error) { alert(picked.error); return; }
-        if (picked.fallback) {
-          document.getElementById('_achVideoFallbackInput').click();
-        }
+        if (picked.fallback) document.getElementById('_achVideoFallbackInput').click();
       },
       async _addAchVideoFallback(input) {
         const f = input.files[0]; if (!f) return;
-        const data = await saveMediaFile(f, true);
+        const data = await saveMediaFile(f);
         if (data) { state._achVideo = data; renderAchPreview(); }
         input.value = '';
       },
@@ -2121,13 +1872,7 @@
         const t = $('#achTitle'), d = $('#achDate'), desc = $('#achDesc');
         const title = t ? t.value.trim() : '';
         if (!title) { toast('Введите заголовок'); return; }
-        state.ach.push({
-          id: uid(), title,
-          date: (d && d.value) || new Date().toISOString(),
-          desc: desc ? desc.value.trim() : '',
-          photo: state._achPhoto || '',
-          video: state._achVideo || null
-        });
+        state.ach.push({ id: uid(), title, date: (d && d.value) || new Date().toISOString(), desc: desc ? desc.value.trim() : '', photo: state._achPhoto || '', video: state._achVideo || null });
         state._achPhoto = '';
         state._achVideo = null;
         save('ach'); render(); toast('Достижение записано 🎉');
@@ -2138,7 +1883,6 @@
         save('ach'); render();
       },
 
-      /* ---- ритуалы ---- */
       toggleStep(rid, sid) {
         const r = state.rituals.find(x => x.id === rid); if (!r) return;
         const periodKey = getPeriodKey(r.period);
@@ -2166,7 +1910,6 @@
       delStep(rid, sid) {
         const r = state.rituals.find(x => x.id === rid); if (!r) return;
         r.steps = r.steps.filter(s => s.id !== sid);
-        // Чистим id удалённого шага из всех периодов — иначе счётчик ломается.
         if (r.completions) {
           Object.values(r.completions).forEach(period => {
             if (period && typeof period === 'object') delete period[sid];
@@ -2183,52 +1926,24 @@
         const n = $('#ritName'), p = $('#ritPeriod');
         const name = n ? n.value.trim() : '';
         if (!name) { toast('Введите название'); return; }
-        state.rituals.push({
-          id: uid(), name, emoji: '✨',
-          period: p ? p.value : 'daily',
-          steps: [], completions: {}
-        });
+        state.rituals.push({ id: uid(), name, emoji: '✨', period: p ? p.value : 'daily', steps: [], completions: {} });
         save('rituals'); render(); toast('Ритуал создан');
       },
 
-      /* ---- АВАТАР ---- */
-      async pickAvatar() {
-        const picked = await pickImagesReference(1);
-        if (picked.cancelled) return;
-        if (picked.uris && picked.uris.length) {
-          state._newAvatar = await importImageToApp(picked.uris[0]);
-          App._renderAvatarPreview();
-          return;
-        }
-        if (picked.error) { alert(picked.error); return; }
-        if (picked.fallback) document.getElementById('avatarFile').click();
-      },
       async loadAvatar(input) {
         const f = input.files[0]; if (!f) return;
-        const data = await compressImage(f);
-        if (data) {
-          state._newAvatar = data;
-          App._renderAvatarPreview();
-        }
+        const uri = await processImageFile(f);
+        if (uri) { state._newAvatar = uri; App._renderAvatarPreview(); }
         input.value = '';
       },
-      clearAvatar() {
-        state._newAvatar = '';
-        App._renderAvatarPreview();
-      },
+      clearAvatar() { state._newAvatar = ''; App._renderAvatarPreview(); },
       _renderAvatarPreview() {
         const img = $('#avatarPreview'), emoji = $('#avatarPreviewEmoji');
         const src = (state._newAvatar !== undefined) ? state._newAvatar : state.avatar;
-        if (src) {
-          img.src = getSrc(src); img.style.display = 'block';
-          emoji.style.display = 'none';
-        } else {
-          img.style.display = 'none';
-          emoji.style.display = 'block';
-        }
+        if (src) { img.src = getSrc(src); img.style.display = 'block'; emoji.style.display = 'none'; }
+        else { img.style.display = 'none'; emoji.style.display = 'block'; }
       },
 
-      /* ---- НАСТРОЙКИ ---- */
       openSettings(firstTime) {
         $('#setName').value = (state.name && state.name !== 'Малыш') ? state.name : '';
         $('#setMother').value = state.motherName || '';
@@ -2256,8 +1971,6 @@
         Object.values(LS).forEach(k => localStorage.removeItem(k));
         location.reload();
       },
-
-      /* ---- ОБНОВЛЕНИЯ (по кнопке) ---- */
       async manualCheckUpdates() {
         const btn = document.getElementById('checkUpdatesBtn');
         if (!btn) { await checkForUpdates(); return; }
@@ -2265,15 +1978,8 @@
         const original = btn.textContent;
         btn.disabled = true;
         btn.textContent = '⏳ Проверяю…';
-        try {
-          await checkForUpdates();
-        } finally {
-          btn.disabled = false;
-          btn.textContent = original;
-        }
+        try { await checkForUpdates(); } finally { btn.disabled = false; btn.textContent = original; }
       },
-
-      /* ---- ЗАМЕНА window.prompt() — не работает в Android WebView ---- */
       askText(title, defaultValue) {
         return new Promise(resolve => {
           App._promptCb = resolve;
@@ -2307,72 +2013,41 @@
     function renderAchPreview() {
       const el = $('#achPhotoPreview'); if (!el) return;
       let html = '';
-      if (state._achPhoto) {
-        html += '<div class="photo-prev"><img src="' + getSrc(state._achPhoto) + '"><button onclick="App._delAchPhoto()">✕</button></div>';
-      }
+      if (state._achPhoto) html += '<div class="photo-prev"><img src="' + getSrc(state._achPhoto) + '"><button onclick="App._delAchPhoto()">✕</button></div>';
       if (state._achVideo) {
-        if (state._achVideo.startsWith('data:') || state._achVideo.startsWith('blob:')) {
-          html += '<div class="photo-prev"><video src="' + getSrc(state._achVideo) + '"></video><button onclick="App._delAchVideo()">✕</button></div>';
-        } else {
-          html += '<div class="photo-prev">'
-            + '<div style="width:70px;height:70px;border-radius:10px;background:linear-gradient(135deg,#b39ddb,#8fd0c2);display:flex;align-items:center;justify-content:center;font-size:26px;">🎥</div>'
-            + '<button onclick="App._delAchVideo()">✕</button>'
-            + '</div>';
-        }
+        if (state._achVideo.startsWith('data:') || state._achVideo.startsWith('blob:')) html += '<div class="photo-prev"><video src="' + getSrc(state._achVideo) + '"></video><button onclick="App._delAchVideo()">✕</button></div>';
+        else html += '<div class="photo-prev"><div style="width:70px;height:70px;border-radius:10px;background:linear-gradient(135deg,#b39ddb,#8fd0c2);display:flex;align-items:center;justify-content:center;font-size:26px;">🎥</div><button onclick="App._delAchVideo()">✕</button></div>';
       }
       el.innerHTML = html;
     }
 
-    /* ============ СОБЫТИЯ ============ */
     $('#tabs').addEventListener('click', e => {
       const b = e.target.closest('.tab');
       if (b) App.switchTab(b.dataset.tab);
     });
     $('#avatarBtn').addEventListener('click', () => App.openSettings(false));
-    $('#avatarEdit').addEventListener('click', () => App.pickAvatar());
-    $('#settingsModal').addEventListener('click', e => {
-      if (e.target.id === 'settingsModal') e.target.classList.remove('show');
-    });
-    $('#importModal').addEventListener('click', e => {
-      if (e.target.id === 'importModal') e.target.classList.remove('show');
-    });
-    $('#promptModal').addEventListener('click', e => {
-      if (e.target.id === 'promptModal') App._promptResolve(null);
-    });
+    $('#avatarEdit').addEventListener('click', () => $('#avatarFile').click());
+    $('#settingsModal').addEventListener('click', e => { if (e.target.id === 'settingsModal') e.target.classList.remove('show'); });
+    $('#importModal').addEventListener('click', e => { if (e.target.id === 'importModal') e.target.classList.remove('show'); });
+    $('#promptModal').addEventListener('click', e => { if (e.target.id === 'promptModal') App._promptResolve(null); });
 
-    /* ============ ИНИЦИАЛИЗАЦИЯ ============ */
     (function init() {
       if (!state.rituals.length && !localStorage.getItem(LS.onboarded)) {
         state.rituals = [
-          {
-            id: uid(), name: 'Ритуал сна', emoji: '🌙', period: 'daily', steps: [
-              { id: uid(), text: 'Выключить свет' },
-              { id: uid(), text: 'Запеленать' },
-              { id: uid(), text: 'Покормить' },
-              { id: uid(), text: 'Подержать столбиком' },
-              { id: uid(), text: 'Прочесть сказку на ночь' },
-              { id: uid(), text: 'Открыть окно / проветрить' }
-            ], completions: {}
-          },
-          {
-            id: uid(), name: 'Утренний ритуал', emoji: '☀️', period: 'daily', steps: [
-              { id: uid(), text: 'Умывание' },
-              { id: uid(), text: 'Воздушные ванны 5 мин' },
-              { id: uid(), text: 'Лёгкий массаж' },
-              { id: uid(), text: 'Кормление' }
-            ], completions: {}
-          }
+          { id: uid(), name: 'Ритуал сна', emoji: '🌙', period: 'daily', steps: [
+            { id: uid(), text: 'Выключить свет' }, { id: uid(), text: 'Запеленать' }, { id: uid(), text: 'Покормить' },
+            { id: uid(), text: 'Подержать столбиком' }, { id: uid(), text: 'Прочесть сказку на ночь' }, { id: uid(), text: 'Открыть окно / проветрить' }
+          ], completions: {} },
+          { id: uid(), name: 'Утренний ритуал', emoji: '☀️', period: 'daily', steps: [
+            { id: uid(), text: 'Умывание' }, { id: uid(), text: 'Воздушные ванны 5 мин' }, { id: uid(), text: 'Лёгкий массаж' }, { id: uid(), text: 'Кормление' }
+          ], completions: {} }
         ];
         save('rituals');
       }
-
       ensureTasksFor(todayStr());
       finalizePastTasks();
       render();
-
-      if (!localStorage.getItem(LS.onboarded)) {
-        setTimeout(() => App.openSettings(true), 300);
-      }
+      if (!localStorage.getItem(LS.onboarded)) setTimeout(() => App.openSettings(true), 300);
     })();
   </script>
 </body>
