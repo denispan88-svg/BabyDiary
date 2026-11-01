@@ -55,7 +55,8 @@ jobs:
       - name: Prepare web directory
         run: |
           mkdir -p www
-          cp index.html www/
+          mkdir -p www
+          cp index.html style.css www/
 
       # ⚠️ ВСЕ плагины Capacitor зафиксированы на версии 7.x
       - name: Install dependencies
